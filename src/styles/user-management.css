@@ -1,0 +1,131 @@
+
+.user-container {
+    padding: 2rem;
+}
+
+
+.user-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+}
+
+.user-top-bar {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+
+.user-controls {
+    margin-bottom: 1rem;
+}
+
+.user-controls select,
+.user-controls input {
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+}
+
+
+.user-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.user-table th,
+.user-table td {
+    border: 1px solid #e5e7eb;
+    padding: 0.5rem;
+    text-align: left;
+}
+
+.user-table th {
+    background-color: #f3f4f6;
+    font-weight: 600;
+}
+
+
+.view-btn,
+.edit-btn,
+.delete-btn {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: white;
+    border-radius: 0.25rem;
+    margin-right: 0.25rem;
+    cursor: pointer;
+}
+
+.view-btn {
+    background-color: #8b5cf6 !important;;
+}
+
+.edit-btn {
+    background-color: #3b82f6 !important;;
+}
+
+.delete-btn {
+    background-color: #ef4444;
+}
+
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-box {
+    background-color: white;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    width: 90%;
+    max-width: 400px;
+}
+
+.modal-box h2 {
+    font-size: 1.25rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+}
+
+.modal-box img {
+    width: 100px;
+    margin-bottom: 1rem;
+}
+
+.modal-close {
+    background-color: #6b7280;
+    color: white;
+    padding: 0.5rem 1rem;
+    margin-top: 1rem;
+    border-radius: 0.375rem;
+    cursor: pointer;
+}
+
+.form-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.form-row label {
+    width: 140px;
+    font-weight: bold;
+    margin-right: 10px;
+}
+
+.input-field {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
