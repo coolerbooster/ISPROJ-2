@@ -46,6 +46,9 @@ export default function Login() {
                 <button type="submit">Login</button>
                 {error && <p className="error-message">{error}</p>}
             </form>
+            <p style={{ textAlign: 'center', marginTop: '10px' }}>
+                <a href="/Forgot-Password">Forgot Password?</a>
+            </p>
         </div>
     );
 } 
