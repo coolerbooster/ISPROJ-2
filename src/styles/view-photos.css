@@ -1,0 +1,88 @@
+.photo-container {
+    padding: 2.625rem;
+}
+
+.photo-header {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+}
+
+.back-btn {
+    background-color: #3b82f6;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    border: none;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.back-btn:hover {
+    background-color: #2563eb;
+}
+
+.photo-title {
+    font-size: 1.5rem;
+    color: #333;
+}
+
+.photo-table-container {
+    display: flex;
+    justify-content: center;
+}
+
+.photo-table {
+    width: 100%;
+    max-width: 1000px;
+    border: 1px solid #d1d5db;
+    border-collapse: collapse;
+}
+
+.photo-table th {
+    background-color: #f3f4f6;
+    border: 1px solid #d1d5db;
+    padding: 0.5rem 1rem;
+    text-align: center;
+}
+
+.photo-table td {
+    border: 1px solid #d1d5db;
+    padding: 0.5rem 1rem;
+    text-align: center;
+}
+
+.photo-thumb {
+    width: 80px;
+    height: auto;
+    border-radius: 0.375rem;
+}
+
+.edit-btn {
+    background-color: #3b82f6;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.375rem;
+    transition: background-color 0.3s;
+    border: none;
+}
+
+.edit-btn:hover {
+    background-color: #2563eb;
+}
+
+.delete-btn {
+    background-color: #ef4444;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.375rem;
+    transition: background-color 0.3s;
+    border: none;
+    margin-left: 0.5rem;
+}
+
+.delete-btn:hover {
+    background-color: #dc2626;
+}
