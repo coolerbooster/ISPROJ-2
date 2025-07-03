@@ -1,28 +1,42 @@
-import { AdminModel } from '../models/AdminModel';
-
 export const AdminController = {
-    getAdmins: () => AdminModel.getAll(),
-
-    createAdmin: (admin) => {
-        if (admin.password !== admin.confirmPassword) {
-            throw new Error('Password and Confirm Password do not match.');
-        }
-        return AdminModel.create({
-            email: admin.email,
-            firstName: admin.firstName,
-            lastName: admin.lastName,
-            password: admin.password
-        });
+    getAdmins: async () => {
+        const res = await fetch('/api/admins');
+        return await res.json();
     },
 
-    updateAdmin: (id, admin) => AdminModel.update(id, admin),
+    searchAdmins: async (query) => {
+        const res = await fetch(`/api/admins?search=${encodeURIComponent(query)}`);
+        return await res.json();
+    },
 
-    deleteAdmin: (id) => AdminModel.delete(id),
+    deleteAdmin: async (id) => {
+        await fetch(`/api/admins/${id}`, { method: 'DELETE' });
+    },
 
-    searchAdmins: (query) => AdminModel.search(query),
+    createAdmin: async (admin) => {
+        const res = await fetch('/api/admins', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(admin)
+        });
 
-    getAdminById: (id) => {
-        const admins = JSON.parse(localStorage.getItem('admins')) || [];
-        return admins.find(admin => admin.id === id);
-    }
+        if (!res.ok) {
+            const error = await res.json().catch(() => ({}));
+            throw new Error(error.error || 'Failed to create admin');
+        }
+
+        return await res.json();
+    },
+
+    updateAdmin: async (id, admin) => {
+        const res = await fetch(`/api/admins/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(admin),
+        });
+        if (!res.ok) throw new Error('Failed to update admin.');
+        return await res.json();
+    },
 };

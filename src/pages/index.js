@@ -6,12 +6,13 @@ export default function Login() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [checkingAuth, setCheckingAuth] = useState(true); // <-- Add loading state
     const router = useRouter();
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        const isValid = AuthController.login(username, password);
 
+        const isValid = AuthController.login(username, password);
         if (isValid) {
             router.push('/dashboard');
         } else {
@@ -19,23 +20,19 @@ export default function Login() {
         }
     };
 
-    // Redirect to dashboard if already logged in
     useEffect(() => {
-        if (AuthController.isAuthenticated()) {
-            router.replace('/dashboard');
-        }
-
-        const handlePopState = () => {
-            if (!AuthController.isAuthenticated()) {
-                router.replace('/');
+        // Only run this after the component has mounted
+        if (typeof window !== 'undefined') {
+            const alreadyLoggedIn = AuthController.isAuthenticated();
+            if (alreadyLoggedIn) {
+                router.replace('/dashboard');
+            } else {
+                setCheckingAuth(false); // <-- Stop checking
             }
-        };
-
-        window.addEventListener('popstate', handlePopState);
-        return () => {
-            window.removeEventListener('popstate', handlePopState);
-        };
+        }
     }, []);
+
+    if (checkingAuth) return null; // Prevent showing the login form while checking auth
 
     return (
         <div className="login-container">

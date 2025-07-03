@@ -1,51 +1,51 @@
 import { useEffect, useState } from 'react';
-import { AdminController } from '../controllers/AdminController';
 import Link from 'next/link';
 import Navbar from '../components/Navbar';
+import { useRouter } from 'next/router';
+import { AdminController } from '../controllers/AdminController';
 
 export default function AdminManagement() {
     const [admins, setAdmins] = useState([]);
     const [entries, setEntries] = useState(10);
     const [searchTerm, setSearchTerm] = useState('');
-    const [form, setForm] = useState({ email: '', firstName: '', lastName: '', password: '', id: null });
-    const [editing, setEditing] = useState(false);
+    const router = useRouter();
 
+    // Load all admins on initial load
     useEffect(() => {
-        setAdmins(AdminController.getAdmins());
+        const loadAdmins = async () => {
+            const data = await AdminController.getAdmins();
+            setAdmins(data);
+        };
+        loadAdmins();
     }, []);
 
-    const handleSearch = (e) => {
+    // Handle search
+    const handleSearch = async (e) => {
         const query = e.target.value;
         setSearchTerm(query);
-        const filtered = AdminController.searchAdmins(query);
-        setAdmins(filtered);
+        const results = await AdminController.searchAdmins(query);
+        setAdmins(results);
     };
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        if (editing) {
-            AdminController.updateAdmin(form.id, form);
-        } else {
-            AdminController.createAdmin(form);
-        }
-        setForm({ email: '', firstName: '', lastName: '', password: '', id: null });
-        setEditing(false);
-        setAdmins(AdminController.getAdmins());
-    };
-
-    const handleEdit = (admin) => {
-        setForm(admin);
-        setEditing(true);
-    };
-
-    const handleDelete = (id) => {
+    // ✅ Handle delete using AdminController
+    const handleDelete = async (id) => {
         if (confirm('Are you sure you want to delete this admin?')) {
-            AdminController.deleteAdmin(id);
-            setAdmins(AdminController.getAdmins());
+            try {
+                await AdminController.deleteAdmin(id);
+                const updatedAdmins = await AdminController.getAdmins(); // Refresh list
+                setAdmins(updatedAdmins);
+            } catch (err) {
+                console.error(err);
+                alert('Failed to delete admin.');
+            }
         }
     };
 
-    const paginatedAdmins = admins.slice(0, entries);
+    // Filter + paginate
+    const filtered = admins.filter(admin =>
+        admin.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    const paginatedAdmins = filtered.slice(0, entries);
 
     return (
         <>
@@ -60,7 +60,7 @@ export default function AdminManagement() {
                         <input
                             id="search"
                             type="text"
-                            placeholder="by email or name"
+                            placeholder="by email"
                             value={searchTerm}
                             onChange={handleSearch}
                             className="search-input"
@@ -90,8 +90,6 @@ export default function AdminManagement() {
                         <tr>
                             <th>#</th>
                             <th>Email</th>
-                            <th>First Name</th>
-                            <th>Last Name</th>
                             <th>Password</th>
                             <th>Actions</th>
                         </tr>
@@ -101,8 +99,6 @@ export default function AdminManagement() {
                             <tr key={admin.id}>
                                 <td>{admin.id}</td>
                                 <td>{admin.email}</td>
-                                <td>{admin.firstName}</td>
-                                <td>{admin.lastName}</td>
                                 <td>••••••</td>
                                 <td className="action-buttons">
                                     <Link
@@ -114,10 +110,7 @@ export default function AdminManagement() {
                                     >
                                         <a className="edit-btn">Edit</a>
                                     </Link>
-                                    <button
-                                        className="delete-btn"
-                                        onClick={() => handleDelete(admin.id)}
-                                    >
+                                    <button className="delete-btn" onClick={() => handleDelete(admin.id)}>
                                         Delete
                                     </button>
                                 </td>
@@ -125,7 +118,7 @@ export default function AdminManagement() {
                         ))}
                         {paginatedAdmins.length === 0 && (
                             <tr>
-                                <td colSpan="6" className="no-admins">No admins found.</td>
+                                <td colSpan="4" className="no-admins">No admins found.</td>
                             </tr>
                         )}
                         </tbody>

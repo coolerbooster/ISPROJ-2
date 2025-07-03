@@ -1,13 +1,17 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import Link from 'next/link';
 import Navbar from '../components/Navbar';
 import { AuthController } from '../controllers/AuthController';
 
+const COLORS = ['#FF8042', '#FFD700'];
 
 export default function Dashboard() {
     const router = useRouter();
+    const [users, setUsers] = useState([]);
+    const [userStats, setUserStats] = useState({ total: 0, premium: 0, free: 0 });
+    const [signupData, setSignupData] = useState([]);
 
     useEffect(() => {
         if (!AuthController.isAuthenticated()) {
@@ -28,34 +32,43 @@ export default function Dashboard() {
         };
     }, []);
 
-    // Sample data for charts
-    const signupData = [
-        { name: 'Jan', users: 8 },
-        { name: 'Feb', users: 10 },
-        { name: 'Mar', users: 9 },
-        { name: 'Apr', users: 12 },
-        { name: 'May', users: 15 },
-        { name: 'Jun', users: 11 },
-        { name: 'Jul', users: 13 },
-    ];
+    useEffect(() => {
+        const fetchDashboardData = async () => {
+            try {
+                const res = await fetch('/api/dashboard/users');
+                const data = await res.json();
+                setUsers(data.users);
+                setUserStats(data.stats);
 
-    const userDistribution = [
-        { name: 'Free Users', value: 75.3 },
-        { name: 'Premium Users', value: 24.7 }
-    ];
+                // Prepare signup data for last 7 days
+                const today = new Date();
+                const dailyCounts = Array.from({ length: 7 }, (_, i) => {
+                    const date = new Date(today);
+                    date.setDate(today.getDate() - (6 - i));
+                    return {
+                        date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                        users: data.users.filter(u => {
+                            const createdAt = new Date(u.createdAt);
+                            return createdAt.toDateString() === date.toDateString() && u.accountType !== 'admin';
+                        }).length
+                    };
+                });
+                setSignupData(dailyCounts);
 
-    const COLORS = ['#FF8042', '#FFD700'];
+            } catch (error) {
+                console.error('Failed to load dashboard data', error);
+            }
+        };
+        fetchDashboardData();
+    }, []);
 
-    // Sample user data
-    const users = [
-        { id: 10, email: 'user1234@gmail.com', userType: 'User', subscriptionType: 'Free', scanCount: 10, guardianMode: 'No' },
-        { id: 9, email: 'jose_rosario@gmail.com', userType: 'Guardian', subscriptionType: 'Premium', scanCount: 'Unlimited', guardianMode: 'Yes' },
-        { id: 8, email: '1234_567rpv@gmail.com', userType: 'User', subscriptionType: 'Free', scanCount: 10, guardianMode: 'No' },
+    const pieData = [
+        { name: 'Free Users', value: userStats.free },
+        { name: 'Premium Users', value: userStats.premium }
     ];
 
     return (
         <div className="dashboard-container">
-            {/* Use the shared Navbar */}
             <Navbar username="Josie" />
 
             <div className="dashboard-content">
@@ -63,33 +76,23 @@ export default function Dashboard() {
                     <h1>ADMIN DASHBOARD</h1>
                 </div>
 
-                {/* Stats Cards */}
                 <div className="stats-container">
                     <div className="stat-card green">
                         <div className="stat-number">158</div>
                         <div className="stat-label">Online Users</div>
                     </div>
                     <div className="stat-card blue">
-                        <div className="stat-number">304</div>
+                        <div className="stat-number">{userStats.total}</div>
                         <div className="stat-label">Total Users</div>
                     </div>
                     <div className="stat-card orange">
-                        <div className="stat-number">238</div>
+                        <div className="stat-number">{userStats.free}</div>
                         <div className="stat-label">Free Users</div>
                     </div>
                     <div className="stat-card yellow">
-                        <div className="stat-number">66</div>
+                        <div className="stat-number">{userStats.premium}</div>
                         <div className="stat-label">Premium Users</div>
                     </div>
-                </div>
-
-                {/* Report Section */}
-                <div className="report-section">
-                    <div className="date-picker">
-                        <span>Date:</span>
-                        <input type="date" defaultValue="2025-03-07" />
-                    </div>
-                    <button className="generate-report-btn">GENERATE REPORT</button>
                 </div>
 
                 {/* Charts Grid */}
@@ -99,7 +102,7 @@ export default function Dashboard() {
                         <ResponsiveContainer width="100%" height={250}>
                             <BarChart data={signupData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                                 <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="name" />
+                                <XAxis dataKey="date" />
                                 <YAxis />
                                 <Tooltip />
                                 <Bar dataKey="users" fill="#4CAF50" />
@@ -112,15 +115,15 @@ export default function Dashboard() {
                         <ResponsiveContainer width="100%" height={250}>
                             <PieChart>
                                 <Pie
-                                    data={userDistribution}
+                                    data={pieData}
                                     cx="50%"
                                     cy="50%"
                                     outerRadius={80}
                                     fill="#8884d8"
                                     dataKey="value"
-                                    label={({name, value}) => `${name} ${value.toFixed(1)}%`}
+                                    label={({ name, value }) => `${name} ${value}`}
                                 >
-                                    {userDistribution.map((entry, index) => (
+                                    {pieData.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
                                 </Pie>
@@ -149,13 +152,13 @@ export default function Dashboard() {
                             </thead>
                             <tbody>
                             {users.map(user => (
-                                <tr key={user.id}>
-                                    <td>{user.id}</td>
+                                <tr key={user.user_id}>
+                                    <td>{user.user_id}</td>
                                     <td>{user.email}</td>
-                                    <td>{user.userType}</td>
-                                    <td>{user.subscriptionType}</td>
-                                    <td>{user.scanCount}</td>
-                                    <td>{user.guardianMode}</td>
+                                    <td>{user.accountType}</td>
+                                    <td>{user.isPremiumUser ? 'Premium' : 'Free'}</td>
+                                    <td>{user.scanCount ?? 0}</td>
+                                    <td>{user.guardianMode ? 'Yes' : 'No'}</td>
                                 </tr>
                             ))}
                             </tbody>
@@ -166,3 +169,4 @@ export default function Dashboard() {
         </div>
     );
 }
+

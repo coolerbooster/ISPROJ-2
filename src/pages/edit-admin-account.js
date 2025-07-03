@@ -35,12 +35,20 @@ export default function EditAdminAccount() {
         });
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        AdminController.updateAdmin(parseInt(id), form);
-        router.push('/admin-management');
-    };
+        const { id } = router.query;
 
+        try {
+            await AdminController.updateAdmin(id, {
+                firstName: form.firstName,
+                lastName: form.lastName
+            });
+            router.push('/admin-management');
+        } catch (error) {
+            alert(error.message);
+        }
+    };
     return (
         <>
             <Navbar />

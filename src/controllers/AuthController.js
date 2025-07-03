@@ -1,21 +1,10 @@
 import { UserModel } from '../models/UserModel';
 
-
 export const AuthController = {
     login(username, password) {
-        const users = [
-            {
-                username: 'admin',
-                password: 'admin123',
-                role: 'administrator'
-            }
-        ];
+        const isValid = UserModel.validateUser(username, password);
 
-        const found = users.find(
-            user => user.username === username && user.password === password
-        );
-
-        if (found) {
+        if (isValid) {
             localStorage.setItem('isAuthenticated', 'true');
             return true;
         }

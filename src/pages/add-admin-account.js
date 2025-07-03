@@ -14,7 +14,7 @@ export default function AddAdminPage() {
         confirmPassword: ''
     });
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
         if (form.password !== form.confirmPassword) {
@@ -23,7 +23,7 @@ export default function AddAdminPage() {
         }
 
         try {
-            AdminController.createAdmin(form);
+            await AdminController.createAdmin(form);
             router.push('/admin-management');
         } catch (error) {
             alert(error.message);
