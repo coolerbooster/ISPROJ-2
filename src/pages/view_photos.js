@@ -1,31 +1,33 @@
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Navbar from '../components/Navbar';
+import { getUserScansAdmin } from '../services/apiService';
 
 export default function ViewPhotos() {
     const router = useRouter();
-    const { email } = router.query;
+    const { id, email } = router.query;
 
-    const dummyPhotos = [
-        {
-            id: 1,
-            name: 'Water Bottle',
-            type: 'object',
-            photoUrl: 'https://via.placeholder.com/100',
-            audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'
-        },
-        {
-            id: 2,
-            name: 'Receipt',
-            type: 'text',
-            photoUrl: 'https://via.placeholder.com/100',
-            audioUrl: ''
+    const [scans, setScans] = useState([]);
+
+    useEffect(() => {
+        if (id) {
+            fetchScans(id);
         }
-    ];
+    }, [id]);
 
-    const handleEdit = (id) => alert(`Edit photo ID ${id}`);
-    const handleDelete = (id) => {
-        if (confirm('Are you sure you want to delete this photo?')) {
-            alert(`Deleted photo ID ${id}`);
+    const fetchScans = async (userId) => {
+        try {
+            const data = await getUserScansAdmin(userId);
+            setScans(data || []);
+        } catch (err) {
+            console.error("Failed to fetch scans", err);
+        }
+    };
+
+    const handleEdit = (scanId) => alert(`Edit scan ID ${scanId}`);
+    const handleDelete = (scanId) => {
+        if (confirm('Are you sure you want to delete this scan?')) {
+            alert(`Deleted scan ID ${scanId}`);
         }
     };
 
@@ -49,29 +51,38 @@ export default function ViewPhotos() {
                             <th>ID</th>
                             <th>Name</th>
                             <th>Type</th>
-                            <th>Photo</th>
+                            <th>Image</th>
                             <th>Audio</th>
                             <th>Action</th>
                         </tr>
                         </thead>
                         <tbody>
-                        {dummyPhotos.map(photo => (
-                            <tr key={photo.id}>
-                                <td>{photo.id}</td>
-                                <td>{photo.name}</td>
-                                <td>{photo.type}</td>
-                                <td><img src={photo.photoUrl} alt="photo" className="photo-thumb" /></td>
+                        {scans.map((scan) => (
+                            <tr key={scan.scan_id}>
+                                <td>{scan.scan_id}</td>
+                                <td>{scan.name || '(Untitled)'}</td>
+                                <td>{scan.type}</td>
                                 <td>
-                                    {photo.audioUrl ? (
-                                        <audio controls src={photo.audioUrl}></audio>
+                                    {scan.imageUrl ? (
+                                        <img src={scan.imageUrl} alt="Scan" className="photo-thumb" />
+                                    ) : 'No image'}
+                                </td>
+                                <td>
+                                    {scan.audioUrl ? (
+                                        <audio controls src={scan.audioUrl}></audio>
                                     ) : 'No audio'}
                                 </td>
-                                <td className="action-buttons">
-                                    <button className="edit-btn" onClick={() => handleEdit(photo.id)}>Edit</button>
-                                    <button className="delete-btn" onClick={() => handleDelete(photo.id)}>Delete</button>
+                                <td>
+                                    <button className="edit-btn" onClick={() => handleEdit(scan.scan_id)}>Edit</button>
+                                    <button className="delete-btn" onClick={() => handleDelete(scan.scan_id)}>Delete</button>
                                 </td>
                             </tr>
                         ))}
+                        {scans.length === 0 && (
+                            <tr>
+                                <td colSpan="6">No scans found for this user.</td>
+                            </tr>
+                        )}
                         </tbody>
                     </table>
                 </div>

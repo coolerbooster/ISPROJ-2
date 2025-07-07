@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import { useRouter } from 'next/router';
+import { listUsersAdmin, deleteUserAdmin } from "../services/apiService";
 
 export default function UserManagement() {
     const [users, setUsers] = useState([]);
@@ -10,33 +11,36 @@ export default function UserManagement() {
     const router = useRouter();
 
     useEffect(() => {
-        const fetchUsers = async () => {
-            const res = await fetch('/api/users');
-            const data = await res.json();
-            setUsers(data);
-        };
         fetchUsers();
-    }, []);
+    }, [searchTerm, entriesPerPage]);
 
-    const handleEdit = (user) => setEditingUser({ ...user });
-    const handleView = (user) => {
-        router.push(`/view_photos?id=${user.user_id}`);
-    };
-    const handleDelete = (id) => {
-        if (confirm("Are you sure you want to delete this user?")) {
-            setUsers(users.filter((u) => u.user_id !== id));
+    const fetchUsers = async () => {
+        try {
+            const res = await listUsersAdmin(1, entriesPerPage, searchTerm);
+            setUsers(res.users || []);
+        } catch (err) {
+            console.error("Failed to fetch users", err);
         }
     };
 
-    const handleSaveEdit = (updatedUser) => {
-        if (!updatedUser.email.trim() || !updatedUser.password.trim()) return;
-        setUsers(users.map((u) => (u.user_id === updatedUser.user_id ? updatedUser : u)));
-        setEditingUser(null);
+    const handleEdit = (user) => setEditingUser({ ...user });
+
+    const handleView = (user) => {
+        router.push(`/view_photos?id=${user.user_id}&email=${user.email}`);
     };
 
-    const filteredUsers = users.filter((user) =>
-        user.email.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const handleDelete = async (id) => {
+        if (confirm("Are you sure you want to delete this user?")) {
+            try {
+                await deleteUserAdmin(id);
+                setUsers(users.filter((u) => u.user_id !== id));
+            } catch (err) {
+                alert("Failed to delete user.");
+            }
+        }
+    };
+
+    const filteredUsers = users; // already filtered by backend
 
     return (
         <>
@@ -77,13 +81,13 @@ export default function UserManagement() {
                     </tr>
                     </thead>
                     <tbody>
-                    {filteredUsers.slice(0, entriesPerPage).map((user) => (
+                    {filteredUsers.map((user) => (
                         <tr key={user.user_id}>
                             <td>{user.user_id}</td>
                             <td>{user.email}</td>
                             <td>{user.accountType}</td>
                             <td>{user.isPremiumUser ? "Yes" : "No"}</td>
-                            <td>{user.scanCount}</td>
+                            <td>{user.scanCount ?? 0}</td>
                             <td>
                                 <button className="view-btn" onClick={() => handleView(user)}>View</button>
                                 <button className="edit-btn" onClick={() => handleEdit(user)}>Edit</button>
@@ -98,8 +102,6 @@ export default function UserManagement() {
                     )}
                     </tbody>
                 </table>
-
-                {/* editingUser modal remains unchanged, update only fields if needed */}
             </div>
         </>
     );

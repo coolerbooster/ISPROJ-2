@@ -8,8 +8,6 @@ export default function AddAdminPage() {
     const router = useRouter();
     const [form, setForm] = useState({
         email: '',
-        firstName: '',
-        lastName: '',
         password: '',
         confirmPassword: ''
     });
@@ -23,7 +21,7 @@ export default function AddAdminPage() {
         }
 
         try {
-            await AdminController.createAdmin(form);
+            await AdminController.createAdmin(form); // just email and password
             router.push('/admin-management');
         } catch (error) {
             alert(error.message);
@@ -43,26 +41,6 @@ export default function AddAdminPage() {
                 <div className="form-box">
                     <h1 className="form-title">Add Admin Account</h1>
                     <form onSubmit={handleSubmit} className="admin-form">
-                        <div className="form-group">
-                            <label>First Name</label>
-                            <input
-                                type="text"
-                                value={form.firstName}
-                                onChange={e => setForm({ ...form, firstName: e.target.value })}
-                                required
-                                className="input-field"
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label>Last Name</label>
-                            <input
-                                type="text"
-                                value={form.lastName}
-                                onChange={e => setForm({ ...form, lastName: e.target.value })}
-                                required
-                                className="input-field"
-                            />
-                        </div>
                         <div className="form-group">
                             <label>Email</label>
                             <input

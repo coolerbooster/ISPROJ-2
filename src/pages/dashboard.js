@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import Link from 'next/link';
+import { getAdminDashboard, listUsersAdmin } from '../services/apiService';
 import Navbar from '../components/Navbar';
 import { AuthController } from '../controllers/AuthController';
+import {
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+    PieChart, Pie, Cell, ResponsiveContainer
+} from 'recharts';
 
 const COLORS = ['#FF8042', '#FFD700'];
 
 export default function Dashboard() {
     const router = useRouter();
+    const [isLoading, setIsLoading] = useState(true);
     const [users, setUsers] = useState([]);
     const [userStats, setUserStats] = useState({ total: 0, premium: 0, free: 0 });
     const [signupData, setSignupData] = useState([]);
@@ -16,51 +20,48 @@ export default function Dashboard() {
     useEffect(() => {
         if (!AuthController.isAuthenticated()) {
             router.replace('/');
+            return;
         }
-    }, []);
 
-    useEffect(() => {
-        const handlePopState = () => {
-            if (!AuthController.isAuthenticated()) {
-                router.replace('/');
-            }
-        };
-        window.addEventListener('popstate', handlePopState);
-
-        return () => {
-            window.removeEventListener('popstate', handlePopState);
-        };
-    }, []);
-
-    useEffect(() => {
-        const fetchDashboardData = async () => {
+        const fetchData = async () => {
             try {
-                const res = await fetch('/api/dashboard/users');
-                const data = await res.json();
-                setUsers(data.users);
-                setUserStats(data.stats);
+                const dashboard = await getAdminDashboard();
+                setUserStats({
+                    total: dashboard.totalUsers,
+                    premium: dashboard.premiumUsers,
+                    free: dashboard.freeUsers
+                });
 
-                // Prepare signup data for last 7 days
+                const userRes = await listUsersAdmin(1, 100, '');
+                setUsers(userRes.users || []);
+
+                // Chart: last 7 days
                 const today = new Date();
                 const dailyCounts = Array.from({ length: 7 }, (_, i) => {
                     const date = new Date(today);
                     date.setDate(today.getDate() - (6 - i));
-                    return {
-                        date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-                        users: data.users.filter(u => {
-                            const createdAt = new Date(u.createdAt);
-                            return createdAt.toDateString() === date.toDateString() && u.accountType !== 'admin';
-                        }).length
-                    };
-                });
-                setSignupData(dailyCounts);
+                    const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-            } catch (error) {
-                console.error('Failed to load dashboard data', error);
+                    const count = userRes.users.filter(u => {
+                        const createdAt = new Date(u.createdAt);
+                        return createdAt.toDateString() === date.toDateString() && u.accountType !== 'admin';
+                    }).length;
+
+                    return { date: label, users: count };
+                });
+
+                setSignupData(dailyCounts);
+            } catch (err) {
+                console.error('Dashboard load failed:', err);
+            } finally {
+                setIsLoading(false);
             }
         };
-        fetchDashboardData();
+
+        fetchData();
     }, []);
+
+    if (isLoading) return null;
 
     const pieData = [
         { name: 'Free Users', value: userStats.free },
@@ -69,8 +70,7 @@ export default function Dashboard() {
 
     return (
         <div className="dashboard-container">
-            <Navbar username="Josie" />
-
+            <Navbar />
             <div className="dashboard-content">
                 <div className="dashboard-header">
                     <h1>ADMIN DASHBOARD</h1>
@@ -95,12 +95,11 @@ export default function Dashboard() {
                     </div>
                 </div>
 
-                {/* Charts Grid */}
                 <div className="charts-grid">
                     <div className="chart-card">
                         <h3>New Signups (Last 7 Days)</h3>
                         <ResponsiveContainer width="100%" height={250}>
-                            <BarChart data={signupData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                            <BarChart data={signupData}>
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis dataKey="date" />
                                 <YAxis />
@@ -133,7 +132,6 @@ export default function Dashboard() {
                     </div>
                 </div>
 
-                {/* User Table */}
                 <div className="table-section">
                     <div className="table-header">
                         <h3>User Table <span className="expand-text">Click to Expand {String.fromCharCode(62)}</span></h3>
@@ -169,4 +167,3 @@ export default function Dashboard() {
         </div>
     );
 }
-

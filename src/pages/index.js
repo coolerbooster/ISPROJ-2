@@ -1,50 +1,56 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { AuthController } from '../controllers/AuthController';
+import { login, getUserProfile } from '../services/apiService';
 
 export default function Login() {
-    const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-    const [checkingAuth, setCheckingAuth] = useState(true); // <-- Add loading state
+    const [checkingAuth, setCheckingAuth] = useState(true);
     const router = useRouter();
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-
-        const isValid = AuthController.login(username, password);
-        if (isValid) {
+        try {
+            const res = await login(email, password);
+            localStorage.setItem('jwt_token', res.token);
             router.push('/dashboard');
-        } else {
-            setError('Invalid username or password');
+        } catch (err) {
+            setError(err.message);
         }
     };
 
     useEffect(() => {
-        // Only run this after the component has mounted
-        if (typeof window !== 'undefined') {
-            const alreadyLoggedIn = AuthController.isAuthenticated();
-            if (alreadyLoggedIn) {
-                router.replace('/dashboard');
+        const checkToken = async () => {
+            const token = localStorage.getItem('jwt_token');
+            if (token) {
+                try {
+                    await getUserProfile(); // checks token validity
+                    router.replace('/dashboard');
+                } catch {
+                    localStorage.removeItem('jwt_token'); // token expired or invalid
+                    setCheckingAuth(false);
+                }
             } else {
-                setCheckingAuth(false); // <-- Stop checking
+                setCheckingAuth(false);
             }
-        }
+        };
+        checkToken();
     }, []);
 
-    if (checkingAuth) return null; // Prevent showing the login form while checking auth
+    if (checkingAuth) return null;
 
     return (
         <div className="login-container">
             <h1 style={{ marginBottom: '20px', textAlign: 'center' }}>Admin Login</h1>
             <form onSubmit={handleSubmit} className="login-form">
                 <div className="form-group">
-                    <label htmlFor="username">Username</label>
+                    <label htmlFor="email">Email</label>
                     <input
                         type="text"
-                        id="username"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
+                        id="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
                         required
                     />
                 </div>

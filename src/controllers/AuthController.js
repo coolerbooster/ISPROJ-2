@@ -1,22 +1,12 @@
-import { UserModel } from '../models/UserModel';
-
 export const AuthController = {
-    login(username, password) {
-        const isValid = UserModel.validateUser(username, password);
-
-        if (isValid) {
-            localStorage.setItem('isAuthenticated', 'true');
-            return true;
-        }
-
-        return false;
-    },
-
     logout() {
-        localStorage.removeItem('isAuthenticated');
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem('jwt_token');
+        }
     },
 
     isAuthenticated() {
-        return localStorage.getItem('isAuthenticated') === 'true';
+        if (typeof window === 'undefined') return false;
+        return !!localStorage.getItem('jwt_token'); // ✅ Check for actual token
     }
 };

@@ -1,42 +1,31 @@
+import {
+    createUserAsAdmin,
+    listUsersAdmin,
+    deleteUserAdmin
+} from '../services/apiService';
+
 export const AdminController = {
-    getAdmins: async () => {
-        const res = await fetch('/api/admins');
-        return await res.json();
+    async createAdmin({ email, password }) {
+        return await createUserAsAdmin(
+            email,
+            password,
+            'admin',
+            false,
+            0
+        );
     },
 
-    searchAdmins: async (query) => {
-        const res = await fetch(`/api/admins?search=${encodeURIComponent(query)}`);
-        return await res.json();
+    async getAdmins() {
+        const response = await listUsersAdmin(1, 100, '');
+        return response.users || [];
     },
 
-    deleteAdmin: async (id) => {
-        await fetch(`/api/admins/${id}`, { method: 'DELETE' });
+    async searchAdmins(query) {
+        const response = await listUsersAdmin(1, 100, query);
+        return response.users || [];
     },
 
-    createAdmin: async (admin) => {
-        const res = await fetch('/api/admins', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(admin)
-        });
-
-        if (!res.ok) {
-            const error = await res.json().catch(() => ({}));
-            throw new Error(error.error || 'Failed to create admin');
-        }
-
-        return await res.json();
-    },
-
-    updateAdmin: async (id, admin) => {
-        const res = await fetch(`/api/admins/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(admin),
-        });
-        if (!res.ok) throw new Error('Failed to update admin.');
-        return await res.json();
-    },
+    async deleteAdmin(userId) {
+        return await deleteUserAdmin(userId);
+    }
 };

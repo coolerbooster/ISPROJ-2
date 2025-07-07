@@ -1,22 +1,21 @@
 import { useState } from 'react';
-import { useRouter } from 'next/router';
-import { UserModel } from '../models/UserModel';
+import { forgotPassword } from '../services/apiService';
 
 export default function ForgotPassword() {
     const [email, setEmail] = useState('');
     const [message, setMessage] = useState('');
-    const router = useRouter();
+    const [error, setError] = useState('');
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        const user = UserModel.findUserByEmail(email);
+        setMessage('');
+        setError('');
 
-        if (user) {
-
-            const token = btoa(email); // mock token
-            setMessage(`Reset link: http://localhost:3000/reset-password?token=${token}`);
-        } else {
-            setMessage('Email not found.');
+        try {
+            const res = await forgotPassword(email);
+            setMessage('Reset code sent to your email.');
+        } catch (err) {
+            setError(err.message || 'Failed to send reset code.');
         }
     };
 
@@ -26,9 +25,10 @@ export default function ForgotPassword() {
             <form onSubmit={handleSubmit} className="login-form">
                 <label>Email:</label>
                 <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-                <button type="submit">Send Reset Link</button>
+                <button type="submit">Send Reset Code</button>
             </form>
-            {message && <p style={{ marginTop: '10px' }}>{message}</p>}
+            {message && <p style={{ marginTop: '10px', color: 'green' }}>{message}</p>}
+            {error && <p style={{ marginTop: '10px', color: 'red' }}>{error}</p>}
         </div>
     );
 }
