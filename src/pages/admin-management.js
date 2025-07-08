@@ -10,7 +10,6 @@ export default function AdminManagement() {
     const [searchTerm, setSearchTerm] = useState('');
     const router = useRouter();
 
-    // Load all admins on initial load
     useEffect(() => {
         const loadAdmins = async () => {
             const data = await AdminController.getAdmins();
@@ -19,7 +18,6 @@ export default function AdminManagement() {
         loadAdmins();
     }, []);
 
-    // Handle search
     const handleSearch = async (e) => {
         const query = e.target.value;
         setSearchTerm(query);
@@ -27,12 +25,11 @@ export default function AdminManagement() {
         setAdmins(results);
     };
 
-    // ✅ Handle delete using AdminController
     const handleDelete = async (id) => {
         if (confirm('Are you sure you want to delete this admin?')) {
             try {
                 await AdminController.deleteAdmin(id);
-                const updatedAdmins = await AdminController.getAdmins(); // Refresh list
+                const updatedAdmins = await AdminController.getAdmins();
                 setAdmins(updatedAdmins);
             } catch (err) {
                 console.error(err);
@@ -41,7 +38,6 @@ export default function AdminManagement() {
         }
     };
 
-    // Filter + paginate
     const filtered = admins.filter(admin =>
         admin.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -110,7 +106,10 @@ export default function AdminManagement() {
                                     >
                                         <a className="edit-btn">Edit</a>
                                     </Link>
-                                    <button className="delete-btn" onClick={() => handleDelete(admin.id)}>
+                                    <button
+                                        className="delete-btn"
+                                        onClick={() => handleDelete(admin.id)}
+                                    >
                                         Delete
                                     </button>
                                 </td>

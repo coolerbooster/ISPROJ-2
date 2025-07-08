@@ -9,7 +9,7 @@ export const AdminController = {
         return await createUserAsAdmin(
             email,
             password,
-            'admin',
+            'Admin',
             false,
             0
         );
@@ -17,12 +17,20 @@ export const AdminController = {
 
     async getAdmins() {
         const response = await listUsersAdmin(1, 100, '');
-        return response.users || [];
+        console.log('🧩 AdminController.getAdmins response:', response);
+        const allUsers = response.users || [];
+        const admins = allUsers.filter(u => u.accountType === 'Admin');
+        console.log('✅ Filtered admins:', admins);
+        return admins;
     },
 
     async searchAdmins(query) {
         const response = await listUsersAdmin(1, 100, query);
-        return response.users || [];
+        const allUsers = response.users || [];
+
+        return allUsers
+            .filter(user => user.accountType === 'Admin')
+            .map(user => ({ ...user, id: user.user_id }));
     },
 
     async deleteAdmin(userId) {

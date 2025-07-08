@@ -87,7 +87,7 @@ export function getAdminDashboard() {
     return request('GET', '/api/admin/dashboard', null, true);
 }
 export function createUserAsAdmin(email, password, accountType, isPremiumUser, scanCount) {
-    return request('POST', '/api/admin/users', { email, password, accountType, isPremiumUser, scanCount }, true);
+    return request('POST', '/api/admin/users', {email, password, accountType, isPremiumUser, scanCount}, true);
 }
 export function listUsersAdmin(page, limit, search) {
     return request('GET', `/api/admin/users?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`, null, true);
