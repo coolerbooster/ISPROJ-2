@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import { useRouter } from "next/router";
-import { listUsersAdmin, deleteUserAdmin, updateUserAdmin } from "../services/apiService";
+import {
+    listUsersAdmin,
+    deleteUserAdmin,
+    updateUserAdmin,
+    getUserScansAdmin
+} from "../services/apiService";
 
 export default function UserManagement() {
     const [allUsers, setAllUsers] = useState([]);
@@ -14,7 +19,7 @@ export default function UserManagement() {
     const [editUserData, setEditUserData] = useState({
         user_id: null,
         email: "",
-        accountType: "User",
+        accountType: "User",    // preserve userType for update
         isPremiumUser: false,
         password: "",
         passwordEditable: false,
@@ -23,7 +28,10 @@ export default function UserManagement() {
 
     const router = useRouter();
 
-    useEffect(() => { fetchUsers(); }, [searchTerm]);
+    useEffect(() => {
+        fetchUsers();
+    }, [searchTerm]);
+
     useEffect(() => {
         const start = (currentPage - 1) * entriesPerPage;
         setUsers(allUsers.slice(start, start + entriesPerPage));
@@ -33,7 +41,18 @@ export default function UserManagement() {
         try {
             const res = await listUsersAdmin(1, 1000, searchTerm);
             const nonAdmin = (res.users || []).filter(u => u.userType?.toLowerCase() !== "admin");
-            setAllUsers(nonAdmin);
+            const enriched = await Promise.all(
+                nonAdmin.map(async user => {
+                    const scansRes = await getUserScansAdmin(user.user_id);
+                    const count = Array.isArray(scansRes)
+                        ? scansRes.length
+                        : Array.isArray(scansRes.scans)
+                            ? scansRes.scans.length
+                            : 0;
+                    return { ...user, scanCount: count };
+                })
+            );
+            setAllUsers(enriched);
             setCurrentPage(1);
         } catch (err) {
             console.error("Failed to fetch users", err);
@@ -41,16 +60,18 @@ export default function UserManagement() {
     }
 
     function handleView(user) {
-        router.push(`/view_photos?id=${user.user_id}&email=${encodeURIComponent(user.email)}`);
+        router.push(
+            `/view_photos?id=${user.user_id}&email=${encodeURIComponent(user.email)}`
+        );
     }
 
     function handleEdit(user) {
         setEditUserData({
             user_id: user.user_id,
             email: user.email,
-            accountType: user.userType,
+            accountType: user.userType,        // capture existing userType
             isPremiumUser: user.subscriptionType === "Premium",
-            scanCount: user.scanCount ?? 0,
+            scanCount: user.scanCount || 0,
             password: "",
             passwordEditable: false
         });
@@ -73,7 +94,7 @@ export default function UserManagement() {
             await updateUserAdmin(
                 editUserData.user_id,
                 editUserData.email,
-                editUserData.accountType,
+                editUserData.accountType,      // now pass accountType
                 editUserData.isPremiumUser,
                 editUserData.scanCount
             );
@@ -105,11 +126,15 @@ export default function UserManagement() {
                 <div className="user-top-bar">
                     <div className="user-controls">
                         Show{' '}
-                        <select value={entriesPerPage} onChange={e => { setEntriesPerPage(+e.target.value); setCurrentPage(1); }}>
+                        <select
+                            value={entriesPerPage}
+                            onChange={e => { setEntriesPerPage(+e.target.value); setCurrentPage(1); }}
+                        >
                             <option value={10}>10</option>
                             <option value={20}>20</option>
                             <option value={30}>30</option>
-                        </select>{' '}entries
+                        </select>{' '}
+                        entries
                     </div>
                     <div className="user-controls">
                         <input
@@ -156,10 +181,14 @@ export default function UserManagement() {
                     {totalPages > 1 && (
                         <div className="pagination">
                             <button disabled={currentPage === 1} onClick={() => setCurrentPage(currentPage - 1)}>&lt;</button>
-                            {pages.map((p, idx) => p === '...' ? (
-                                <span key={idx} className="ellipsis">...</span>
-                            ) : (
-                                <button key={p} className={currentPage === p ? 'active' : ''} onClick={() => setCurrentPage(p)}>{p}</button>
+                            {pages.map((p, idx) => (
+                                p === '...' ? <span key={idx} className="ellipsis">...</span> : (
+                                    <button
+                                        key={p}
+                                        className={currentPage === p ? 'active' : ''}
+                                        onClick={() => setCurrentPage(p)}
+                                    >{p}</button>
+                                )
                             ))}
                             <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(currentPage + 1)}>&gt;</button>
                         </div>
