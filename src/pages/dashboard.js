@@ -25,7 +25,6 @@ export default function Dashboard() {
 
         const fetchData = async () => {
             try {
-                // 1) get summary counts
                 const dashboard = await getAdminDashboard();
                 setUserStats({
                     total: dashboard.totalUsers,
@@ -33,36 +32,26 @@ export default function Dashboard() {
                     free: dashboard.freeUsers
                 });
 
-                // 2) fetch all users, then exclude Admins
                 const userRes = await listUsersAdmin(1, 100, '');
                 const allUsers = userRes.users || [];
-                const nonAdminUsers = allUsers.filter(
-                    u => u.userType?.toLowerCase() !== 'admin'
-                );
+                const nonAdminUsers = allUsers.filter(u => u.userType?.toLowerCase() !== 'admin');
                 setUsers(nonAdminUsers);
 
-                // 3) build daily signup counts for the last 7 days
                 const today = new Date();
                 const dailyCounts = Array.from({ length: 7 }, (_, i) => {
                     const date = new Date(today);
                     date.setDate(today.getDate() - (6 - i));
-                    const label = date.toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric'
-                    });
+                    const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
                     const count = nonAdminUsers.filter(u => {
                         const createdAt = new Date(u.createdAt);
-                        return (
-                            createdAt.toDateString() === date.toDateString() &&
-                            u.userType?.toLowerCase() !== 'admin'
-                        );
+                        return createdAt.toDateString() === date.toDateString();
                     }).length;
 
                     return { date: label, users: count };
                 });
-                setSignupData(dailyCounts);
 
+                setSignupData(dailyCounts);
             } catch (err) {
                 console.error('Dashboard load failed:', err);
             } finally {
@@ -72,6 +61,31 @@ export default function Dashboard() {
 
         fetchData();
     }, []);
+
+    const downloadReport = async (date) => {
+        if (!date) return alert('Please select a date');
+        try {
+            const token = localStorage.getItem('jwt_token');
+            const res = await fetch(`http://167.71.198.130:3001/api/admin/report?date=${date}`, {
+                method: 'GET',
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (!res.ok) throw new Error('Failed to download report');
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Admin_Report_${date}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            alert(err.message);
+        }
+    };
 
     if (isLoading) return null;
 
@@ -83,7 +97,6 @@ export default function Dashboard() {
     return (
         <div className="dashboard-container">
             <Navbar />
-
             <div className="dashboard-content">
                 <div className="dashboard-header">
                     <h1>ADMIN DASHBOARD</h1>
@@ -91,6 +104,10 @@ export default function Dashboard() {
 
                 <div className="stats-container">
                     <div className="stat-card green">
+                        <div className="stat-number">158</div>
+                        <div className="stat-label">Online Users</div>
+                    </div>
+                    <div className="stat-card blue">
                         <div className="stat-number">{userStats.total}</div>
                         <div className="stat-label">Total Users</div>
                     </div>
@@ -113,7 +130,7 @@ export default function Dashboard() {
                                 <XAxis dataKey="date" />
                                 <YAxis />
                                 <Tooltip />
-                                <Bar dataKey="users" />
+                                <Bar dataKey="users" fill="#4CAF50" />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
@@ -140,40 +157,62 @@ export default function Dashboard() {
                     </div>
                 </div>
 
-                <div className="table-section">
-                    <div className="table-header">
-                        <h3>
-                            User Table{' '}
-                            <span className="expand-text">
-                Click to Expand &gt;
-              </span>
-                        </h3>
-                    </div>
-                    <div className="table-container">
+                <div className="table-section" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    {/* Left: User Table (limited to 3 users) */}
+                    <div className="table-container" style={{ flexGrow: 1, maxWidth: '70%' }}>
+                        <div className="table-header" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <h3>User Table</h3>
+                            <span
+                                className="expand-text"
+                                onClick={() => router.push('/user-management')}
+                                style={{ cursor: 'pointer', color: '#007bff', fontWeight: 'bold' }}
+                            >
+                                Click to Expand &gt;
+                            </span>
+                        </div>
                         <table className="user-table">
                             <thead>
                             <tr>
                                 <th>#</th>
                                 <th>Email</th>
-                                <th>UserType</th>
-                                <th>Subscription Type</th>
+                                <th>User Type</th>
+                                <th>Subscription</th>
                                 <th>Scan Count</th>
-                                <th>Guardian Mode Access</th>
+                                <th>Guardian Access</th>
                             </tr>
                             </thead>
                             <tbody>
-                            {users.map(user => (
+                            {users.slice(0, 3).map(user => (
                                 <tr key={user.user_id}>
                                     <td>{user.user_id}</td>
                                     <td>{user.email}</td>
-                                    <td>{user.userType}</td>
-                                    <td>{user.subscriptionType}</td>
+                                    <td>{user.userType || user.accountType || '-'}</td>
+                                    <td>{user.subscriptionType || (user.isPremiumUser ? 'Premium' : 'Free')}</td>
                                     <td>{user.scanCount ?? 0}</td>
-                                    <td>{user.guardianModeAccess}</td>
+                                    <td>{user.guardianModeAccess ?? user.guardianMode ? 'Yes' : 'No'}</td>
                                 </tr>
                             ))}
                             </tbody>
                         </table>
+                    </div>
+
+                    {/* Right: Report Generator */}
+                    <div className="report-box" style={{ marginLeft: '20px' }}>
+                        <h3>Generate Report</h3>
+                        <input
+                            type="date"
+                            id="report-date"
+                            style={{ padding: '8px', marginBottom: '10px', display: 'block' }}
+                        />
+                        <button
+                            className="generate-report-button"
+                            onClick={() => {
+                                const date = document.getElementById('report-date').value;
+                                downloadReport(date);
+                            }}
+                        >
+                            Generate Report
+                        </button>
                     </div>
                 </div>
             </div>

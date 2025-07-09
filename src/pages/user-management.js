@@ -1,39 +1,45 @@
-// pages/user-management.js
-
 import React, { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import { useRouter } from "next/router";
 import { listUsersAdmin, deleteUserAdmin } from "../services/apiService";
 
 export default function UserManagement() {
+    const [allUsers, setAllUsers] = useState([]);
     const [users, setUsers] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [entriesPerPage, setEntriesPerPage] = useState(10);
+    const [currentPage, setCurrentPage] = useState(1);
     const router = useRouter();
 
     useEffect(() => {
         fetchUsers();
-    }, [searchTerm, entriesPerPage]);
+    }, [searchTerm]);
+
+    useEffect(() => {
+        paginateUsers();
+    }, [allUsers, currentPage, entriesPerPage]);
 
     const fetchUsers = async () => {
         try {
-            const res = await listUsersAdmin(1, entriesPerPage, searchTerm);
-            // strip out Admin accounts here:
-            const nonAdmin = (res.users || []).filter(
-                u => u.userType?.toLowerCase() !== "admin"
-            );
-            setUsers(nonAdmin);
+            const res = await listUsersAdmin(1, 1000, searchTerm);
+            const nonAdmin = (res.users || [])
+                .filter((u) => u.userType?.toLowerCase() !== "admin")
+                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            setAllUsers(nonAdmin);
+            setCurrentPage(1);
         } catch (err) {
             console.error("Failed to fetch users", err);
         }
     };
 
+    const paginateUsers = () => {
+        const start = (currentPage - 1) * entriesPerPage;
+        const end = start + entriesPerPage;
+        setUsers(allUsers.slice(start, end));
+    };
+
     const handleView = (user) => {
-        router.push(
-            `/view_photos?id=${user.user_id}&email=${encodeURIComponent(
-                user.email
-            )}`
-        );
+        router.push(`/view_photos?id=${user.user_id}&email=${encodeURIComponent(user.email)}`);
     };
 
     const handleEdit = (user) => {
@@ -44,11 +50,62 @@ export default function UserManagement() {
         if (!confirm("Are you sure you want to delete this user?")) return;
         try {
             await deleteUserAdmin(id);
-            setUsers((u) => u.filter((x) => x.user_id !== id));
+            fetchUsers();
         } catch (err) {
             console.error(err);
             alert("Failed to delete user.");
         }
+    };
+
+    const totalPages = Math.ceil(allUsers.length / entriesPerPage);
+
+    const renderPagination = () => {
+        if (totalPages <= 1) return null;
+        const pages = [];
+
+        if (totalPages <= 5) {
+            for (let i = 1; i <= totalPages; i++) pages.push(i);
+        } else {
+            if (currentPage <= 3) {
+                pages.push(1, 2, 3, "...", totalPages);
+            } else if (currentPage >= totalPages - 2) {
+                pages.push(1, "...", totalPages - 2, totalPages - 1, totalPages);
+            } else {
+                pages.push(1, "...", currentPage, "...", totalPages);
+            }
+        }
+
+        return (
+            <div className="pagination">
+                <button disabled={currentPage === 1} onClick={() => setCurrentPage(currentPage - 1)}>&lt;</button>
+                {pages.map((page, i) =>
+                    page === "..." ? (
+                        <span
+                            key={i}
+                            className="ellipsis"
+                            onClick={() => {
+                                const input = prompt("Enter page number:");
+                                const parsed = parseInt(input);
+                                if (!isNaN(parsed) && parsed >= 1 && parsed <= totalPages) {
+                                    setCurrentPage(parsed);
+                                }
+                            }}
+                        >
+                            ...
+                        </span>
+                    ) : (
+                        <button
+                            key={page}
+                            className={`page-btn ${currentPage === page ? "active" : ""}`}
+                            onClick={() => setCurrentPage(page)}
+                        >
+                            {page}
+                        </button>
+                    )
+                )}
+                <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(currentPage + 1)}>&gt;</button>
+            </div>
+        );
     };
 
     return (
@@ -59,14 +116,22 @@ export default function UserManagement() {
 
                 <div className="user-top-bar">
                     <div className="user-controls">
-                        <select
-                            value={entriesPerPage}
-                            onChange={(e) => setEntriesPerPage(Number(e.target.value))}
-                        >
-                            <option value={10}>Show 10 entries</option>
-                            <option value={20}>Show 20 entries</option>
-                            <option value={30}>Show 30 entries</option>
-                        </select>
+                        <label className="entries-label">
+                            Show
+                            <select
+                                value={entriesPerPage}
+                                onChange={(e) => {
+                                    setEntriesPerPage(Number(e.target.value));
+                                    setCurrentPage(1);
+                                }}
+                                className="entries-select"
+                            >
+                                <option value={10}>10</option>
+                                <option value={20}>20</option>
+                                <option value={30}>30</option>
+                            </select>
+                            entries
+                        </label>
                     </div>
                     <div className="user-controls">
                         <input
@@ -96,42 +161,23 @@ export default function UserManagement() {
                                 <td>{user.user_id}</td>
                                 <td>{user.email}</td>
                                 <td>{user.userType}</td>
-                                <td>
-                                    {user.subscriptionType === "Premium" ? "Yes" : "No"}
-                                </td>
+                                <td>{user.subscriptionType === "Premium" ? "Yes" : "No"}</td>
                                 <td>{user.scanCount ?? 0}</td>
                                 <td>
-                                    <button
-                                        className="view-btn"
-                                        onClick={() => handleView(user)}
-                                    >
-                                        View
-                                    </button>
-                                    <button
-                                        className="edit-btn"
-                                        onClick={() => handleEdit(user)}
-                                    >
-                                        Edit
-                                    </button>
-                                    <button
-                                        className="delete-btn"
-                                        onClick={() => handleDelete(user.user_id)}
-                                    >
-                                        Delete
-                                    </button>
+                                    <button className="view-btn" onClick={() => handleView(user)}>View</button>
+                                    <button className="edit-btn" onClick={() => handleEdit(user)}>Edit</button>
+                                    <button className="delete-btn" onClick={() => handleDelete(user.user_id)}>Delete</button>
                                 </td>
                             </tr>
                         ))}
-
                         {users.length === 0 && (
                             <tr>
-                                <td colSpan={6} className="no-users">
-                                    No users found.
-                                </td>
+                                <td colSpan={6} className="no-users">No users found.</td>
                             </tr>
                         )}
                         </tbody>
                     </table>
+                    {renderPagination()}
                 </div>
             </div>
         </>
