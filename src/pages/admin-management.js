@@ -105,15 +105,6 @@ export default function AdminManagement() {
                                 <td>{admin.email}</td>
                                 <td>••••••</td>
                                 <td className="action-buttons">
-                                    <Link
-                                        href={{
-                                            pathname: '/edit-admin-account',
-                                            query: { id: admin.id }
-                                        }}
-                                        legacyBehavior
-                                    >
-                                        <a className="edit-btn">Edit</a>
-                                    </Link>
                                     <button
                                         className="delete-btn"
                                         onClick={() => handleDelete(admin.id)}

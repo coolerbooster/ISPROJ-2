@@ -67,7 +67,7 @@ export default function Dashboard() {
         }
 
         try {
-            const token = localStorage.getItem('jwt_token');
+            const token = sessionStorage.getItem('jwt_token');
             const res = await fetch(`http://167.71.198.130:3001/api/admin/report?date=${date}`, {
                 method: 'GET',
                 headers: {
