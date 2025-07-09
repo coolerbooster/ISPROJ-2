@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
-import { useRouter } from 'next/router';
+import { useRouter } from "next/router";
 import { listUsersAdmin, deleteUserAdmin } from "../services/apiService";
 
 export default function UserManagement() {
     const [users, setUsers] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [entriesPerPage, setEntriesPerPage] = useState(10);
-    const [editingUser, setEditingUser] = useState(null);
     const router = useRouter();
 
     useEffect(() => {
+        // whenever searchTerm or entriesPerPage changes, re-fetch
         fetchUsers();
     }, [searchTerm, entriesPerPage]);
 
@@ -23,24 +23,25 @@ export default function UserManagement() {
         }
     };
 
-    const handleEdit = (user) => setEditingUser({ ...user });
-
     const handleView = (user) => {
-        router.push(`/view_photos?id=${user.user_id}&email=${user.email}`);
+        // navigate to the photos page
+        router.push(`/view_photos?id=${user.user_id}&email=${encodeURIComponent(user.email)}`);
+    };
+
+    const handleEdit = (user) => {
+        router.push(`/edit-user?id=${user.user_id}`);
     };
 
     const handleDelete = async (id) => {
-        if (confirm("Are you sure you want to delete this user?")) {
-            try {
-                await deleteUserAdmin(id);
-                setUsers(users.filter((u) => u.user_id !== id));
-            } catch (err) {
-                alert("Failed to delete user.");
-            }
+        if (!confirm("Are you sure you want to delete this user?")) return;
+        try {
+            await deleteUserAdmin(id);
+            setUsers(u => u.filter(x => x.user_id !== id));
+        } catch (err) {
+            console.error(err);
+            alert("Failed to delete user.");
         }
     };
-
-    const filteredUsers = users; // already filtered by backend
 
     return (
         <>
@@ -52,7 +53,7 @@ export default function UserManagement() {
                     <div className="user-controls">
                         <select
                             value={entriesPerPage}
-                            onChange={(e) => setEntriesPerPage(parseInt(e.target.value))}
+                            onChange={e => setEntriesPerPage(Number(e.target.value))}
                         >
                             <option value={10}>Show 10 entries</option>
                             <option value={20}>Show 20 entries</option>
@@ -64,44 +65,57 @@ export default function UserManagement() {
                             type="text"
                             placeholder="Search by email"
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onChange={e => setSearchTerm(e.target.value)}
                         />
                     </div>
                 </div>
 
-                <table className="user-table">
-                    <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Email</th>
-                        <th>Account Type</th>
-                        <th>Premium</th>
-                        <th>Scan Count</th>
-                        <th>Actions</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {filteredUsers.map((user) => (
-                        <tr key={user.user_id}>
-                            <td>{user.user_id}</td>
-                            <td>{user.email}</td>
-                            <td>{user.accountType}</td>
-                            <td>{user.isPremiumUser ? "Yes" : "No"}</td>
-                            <td>{user.scanCount ?? 0}</td>
-                            <td>
-                                <button className="view-btn" onClick={() => handleView(user)}>View</button>
-                                <button className="edit-btn" onClick={() => handleEdit(user)}>Edit</button>
-                                <button className="delete-btn" onClick={() => handleDelete(user.user_id)}>Delete</button>
-                            </td>
-                        </tr>
-                    ))}
-                    {filteredUsers.length === 0 && (
+                <div className="table-container">
+                    <table className="user-table">
+                        <thead>
                         <tr>
-                            <td colSpan="6" className="no-users">No users found.</td>
+                            <th>ID</th>
+                            <th>Email</th>
+                            <th>Account Type</th>
+                            <th>Premium</th>
+                            <th>Scan Count</th>
+                            <th>Actions</th>
                         </tr>
-                    )}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                        {users.map(user => (
+                            <tr key={user.user_id}>
+                                <td>{user.user_id}</td>
+                                <td>{user.email}</td>
+                                {/* use userType */}
+                                <td>{user.userType}</td>
+                                {/* subscriptionType: "Premium" vs "Free" */}
+                                <td>{user.subscriptionType === "Premium" ? "Yes" : "No"}</td>
+                                <td>{user.scanCount ?? 0}</td>
+                                <td>
+                                    <button className="view-btn" onClick={() => handleView(user)}>
+                                        View
+                                    </button>
+                                    <button className="edit-btn" onClick={() => handleEdit(user)}>
+                                        Edit
+                                    </button>
+                                    <button className="delete-btn" onClick={() => handleDelete(user.user_id)}>
+                                        Delete
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+
+                        {users.length === 0 && (
+                            <tr>
+                                <td colSpan={6} className="no-users">
+                                    No users found.
+                                </td>
+                            </tr>
+                        )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </>
     );
