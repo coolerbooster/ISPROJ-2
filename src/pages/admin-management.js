@@ -1,3 +1,4 @@
+// pages/admin-management.js
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Navbar from '../components/Navbar';
@@ -11,26 +12,25 @@ export default function AdminManagement() {
     const router = useRouter();
 
     useEffect(() => {
+        console.log('🏷️  AdminManagement mounted, loading admins…');
         const loadAdmins = async () => {
             try {
                 const data = await AdminController.getAdmins();
+                console.log('🏷️  AdminManagement — setAdmins with:', data);
                 setAdmins(data);
             } catch (err) {
-                console.error('Error loading admins:', err);
+                console.error('🛑 AdminManagement loadAdmins error:', err);
             }
         };
         loadAdmins();
     }, []);
 
+
     const handleSearch = async (e) => {
         const query = e.target.value;
         setSearchTerm(query);
-        try {
-            const results = await AdminController.searchAdmins(query);
-            setAdmins(results);
-        } catch (err) {
-            console.error('Search error:', err);
-        }
+        const results = await AdminController.searchAdmins(query);
+        setAdmins(results);
     };
 
     const handleDelete = async (id) => {
@@ -94,27 +94,30 @@ export default function AdminManagement() {
                         <tr>
                             <th>#</th>
                             <th>Email</th>
-                            <th>Account Type</th>
+                            <th>Password</th>
                             <th>Actions</th>
                         </tr>
                         </thead>
                         <tbody>
                         {paginatedAdmins.map((admin) => (
-                            <tr key={admin.user_id || admin.id}>
-                                <td>{admin.user_id || admin.id}</td>
+                            <tr key={admin.id}>
+                                <td>{admin.id}</td>
                                 <td>{admin.email}</td>
-                                <td>{admin.accountType ?? 'Missing'}</td>
+                                <td>••••••</td>
                                 <td className="action-buttons">
                                     <Link
                                         href={{
                                             pathname: '/edit-admin-account',
-                                            query: { id: admin.user_id || admin.id }
+                                            query: { id: admin.id }
                                         }}
                                         legacyBehavior
                                     >
                                         <a className="edit-btn">Edit</a>
                                     </Link>
-                                    <button className="delete-btn" onClick={() => handleDelete(admin.user_id || admin.id)}>
+                                    <button
+                                        className="delete-btn"
+                                        onClick={() => handleDelete(admin.id)}
+                                    >
                                         Delete
                                     </button>
                                 </td>

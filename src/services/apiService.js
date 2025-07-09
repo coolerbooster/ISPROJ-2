@@ -89,8 +89,13 @@ export function getAdminDashboard() {
 export function createUserAsAdmin(email, password, accountType, isPremiumUser, scanCount) {
     return request('POST', '/api/admin/users', {email, password, accountType, isPremiumUser, scanCount}, true);
 }
-export function listUsersAdmin(page, limit, search) {
-    return request('GET', `/api/admin/users?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`, null, true);
+// ensure search defaults to '' and only append when non-empty
+export function listUsersAdmin(page, limit, search = '') {
+    let path = `/api/admin/users?page=${page}&limit=${limit}`;
+    if (search.trim()) {
+        path += `&search=${encodeURIComponent(search)}`;
+    }
+    return request('GET', path, null, true);
 }
 export function getUserDetailAdmin(userId) {
     return request('GET', `/api/admin/users/${userId}`, null, true);
