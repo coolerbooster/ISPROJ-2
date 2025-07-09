@@ -10,7 +10,14 @@ export default function UserManagement() {
     const [entriesPerPage, setEntriesPerPage] = useState(10);
     const [currentPage, setCurrentPage] = useState(1);
     const [showEditModal, setShowEditModal] = useState(false);
-    const [editUserData, setEditUserData] = useState({ user_id: null, email: '', password: '', subscriptionType: 'Free' });
+    const [editUserData, setEditUserData] = useState({
+        user_id: null,
+        email: '',
+        password: '',
+        subscriptionType: 'Free',
+        passwordEditable: false
+    });
+
     const router = useRouter();
 
     useEffect(() => {
@@ -49,7 +56,8 @@ export default function UserManagement() {
             user_id: user.user_id,
             email: user.email,
             password: '',
-            subscriptionType: user.subscriptionType || 'Free'
+            subscriptionType: user.subscriptionType || 'Free',
+            passwordEditable: false
         });
         setShowEditModal(true);
     };
@@ -67,11 +75,15 @@ export default function UserManagement() {
 
     const handleUpdate = async () => {
         try {
-            await updateUserAdmin(editUserData.user_id, {
+            const payload = {
                 email: editUserData.email,
-                password: editUserData.password,
                 subscriptionType: editUserData.subscriptionType
-            });
+            };
+            if (editUserData.passwordEditable && editUserData.password) {
+                payload.password = editUserData.password;
+            }
+
+            await updateUserAdmin(editUserData.user_id, payload);
             setShowEditModal(false);
             fetchUsers();
         } catch (err) {
@@ -213,22 +225,36 @@ export default function UserManagement() {
                                 type="email"
                                 className="input-field"
                                 value={editUserData.email}
-                                onChange={(e) =>
-                                    setEditUserData({ ...editUserData, email: e.target.value })
-                                }
+                                onChange={(e) => setEditUserData({ ...editUserData, email: e.target.value })}
                             />
                         </div>
+
                         <div className="form-row">
                             <label>Password</label>
                             <input
                                 type="password"
                                 className="input-field"
-                                value={editUserData.password}
+                                value={
+                                    editUserData.passwordEditable
+                                        ? editUserData.password
+                                        : "••••••••"
+                                }
+                                onFocus={() => {
+                                    if (!editUserData.passwordEditable) {
+                                        setEditUserData({
+                                            ...editUserData,
+                                            passwordEditable: true,
+                                            password: ""
+                                        });
+                                    }
+                                }}
                                 onChange={(e) =>
                                     setEditUserData({ ...editUserData, password: e.target.value })
                                 }
+                                readOnly={!editUserData.passwordEditable}
                             />
                         </div>
+
                         <div className="form-row">
                             <label>Subscription</label>
                             <select
@@ -242,34 +268,10 @@ export default function UserManagement() {
                                 <option value="Premium">Premium</option>
                             </select>
                         </div>
-                        <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                            <button
-                                style={{
-                                    padding: '0.5rem 1rem',
-                                    backgroundColor: '#3b82f6',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    marginRight: '10px',
-                                    cursor: 'pointer'
-                                }}
-                                onClick={handleUpdate}
-                            >
-                                Save
-                            </button>
-                            <button
-                                style={{
-                                    padding: '0.5rem 1rem',
-                                    backgroundColor: '#6b7280',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    cursor: 'pointer'
-                                }}
-                                onClick={() => setShowEditModal(false)}
-                            >
-                                Cancel
-                            </button>
+
+                        <div className="modal-actions" style={{ marginTop: '1rem', textAlign: 'right' }}>
+                            <button className="edit-btn" onClick={handleUpdate}>Save</button>
+                            <button className="delete-btn" onClick={() => setShowEditModal(false)}>Cancel</button>
                         </div>
                     </div>
                 </div>
