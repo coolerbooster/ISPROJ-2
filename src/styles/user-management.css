@@ -1,53 +1,78 @@
-
 .user-container {
-    padding: 2rem;
+    padding: 1.25rem 2.625rem 2.625rem 2.625rem;
 }
-
 
 .user-title {
     font-size: 1.5rem;
-    font-weight: bold;
+    font-weight: 600;
     margin-bottom: 1rem;
 }
 
-.user-top-bar {
+.top-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.entries-search-row {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
 }
 
-
-.user-controls {
-    margin-bottom: 1rem;
+.entries-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1rem;
 }
 
-.user-controls select,
-.user-controls input {
-    padding: 0.5rem;
-    border: 1px solid #d1d5db;
+.entries-select {
+    padding: 0.5rem 0.75rem;
     border-radius: 0.375rem;
+    border: 1px solid #ccc;
     font-size: 0.875rem;
 }
 
+.search-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.search-container label {
+    font-weight: 500;
+}
+
+.search-container input {
+    padding: 0.4rem 0.6rem;
+    border: 1px solid #ccc;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    min-width: 220px;
+}
 
 .user-table {
     width: 100%;
     border-collapse: collapse;
     font-size: 0.875rem;
+    border: 1px solid #d1d5db;
 }
 
 .user-table th,
 .user-table td {
-    border: 1px solid #e5e7eb;
-    padding: 0.5rem;
-    text-align: left;
+    border: 1px solid #d1d5db;
+    padding: 0.5rem 1rem;
+    text-align: center;
 }
 
 .user-table th {
-    background-color: #f3f4f6;
-    font-weight: 600;
+    background-color: #d1d5db;
+    font-weight: bold;
+    color: #111827;
 }
-
 
 .view-btn,
 .edit-btn,
@@ -62,17 +87,16 @@
 }
 
 .view-btn {
-    background-color: #8b5cf6 !important;;
+    background-color: #8b5cf6 !important;
 }
 
 .edit-btn {
-    background-color: #3b82f6 !important;;
+    background-color: #3b82f6 !important;
 }
 
 .delete-btn {
     background-color: #ef4444;
 }
-
 
 .modal-overlay {
     position: fixed;
@@ -132,14 +156,15 @@
 
 .pagination {
     display: flex;
-    gap: 8px;
+    gap: 0.25rem;
     justify-content: center;
-    margin-top: 20px;
+    margin-top: 1rem;
 }
 
 .page-btn,
-.ellipsis {
-    padding: 6px 12px;
+.ellipsis,
+.pagination button {
+    padding: 0.4rem 0.75rem;
     border: 1px solid #ccc;
     background-color: #f9f9f9;
     color: #333;
@@ -147,16 +172,20 @@
     border-radius: 4px;
     min-width: 32px;
     text-align: center;
+    font-size: 0.875rem;
 }
 
-.page-btn.active {
-    background-color: #007bff;
+.page-btn.active,
+.pagination button.active {
+    background-color: #3b82f6;
     color: white;
+    border-color: #3b82f6;
     font-weight: bold;
 }
 
 .page-btn:hover,
-.ellipsis:hover {
+.ellipsis:hover,
+.pagination button:hover {
     background-color: #e0e0e0;
 }
 
@@ -164,11 +193,12 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    font-size: 0.9rem;
+    font-size: 1rem;
 }
 
 .entries-select {
-    padding: 0.25rem 0.5rem;
+    padding: 0.5rem 0.75rem;
     border-radius: 0.375rem;
     border: 1px solid #ccc;
+    font-size: 1rem;
 }
