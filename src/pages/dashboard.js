@@ -8,13 +8,13 @@ import {
     PieChart, Pie, Cell, ResponsiveContainer
 } from 'recharts';
 
-const COLORS = ['#FF8042', '#FFD700'];
+const COLORS = ['#f97316', '#3b82f6', '#22c55e']; // Free = orange, Premium = blue, Guardian = green
 
 export default function Dashboard() {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(true);
     const [users, setUsers] = useState([]);
-    const [userStats, setUserStats] = useState({ total: 0, free: 0, premium: 0 });
+    const [userStats, setUserStats] = useState({ total: 0, free: 0, premium: 0, guardian: 0 });
     const [signupData, setSignupData] = useState([]);
     const [onlineCount, setOnlineCount] = useState(0);
 
@@ -26,41 +26,48 @@ export default function Dashboard() {
 
         async function fetchData() {
             try {
-                // Dashboard summary
                 const dash = await getAdminDashboard();
                 const od = dash.data?.onlineUsers ?? dash.onlineUsers;
                 setOnlineCount(od);
 
-                // Fetch non-admin users
                 const listRes = await listUsersAdmin(1, 1000, '');
-                const nonAdmin = (listRes.users || []).filter(u => u.userType?.toLowerCase() !== 'admin');
+                const all = listRes.users || [];
 
-                // Enrich scanCount
+                const nonAdmin = all.filter(u => u.userType?.toLowerCase() !== 'admin');
+
                 const enriched = await Promise.all(
                     nonAdmin.map(async u => {
                         const scansRes = await getUserScansAdmin(u.user_id);
-                        const count = Array.isArray(scansRes) ? scansRes.length : (Array.isArray(scansRes.scans) ? scansRes.scans.length : 0);
+                        const count = Array.isArray(scansRes)
+                            ? scansRes.length
+                            : (Array.isArray(scansRes.scans) ? scansRes.scans.length : 0);
                         return { ...u, scanCount: count };
                     })
                 );
 
-                setUsers(enriched);
                 const totalUsers = enriched.length;
-                const freeUsers = enriched.filter(u => u.subscriptionType === 'Free').length;
+                const guardians = enriched.filter(u => u.userType?.toLowerCase() === 'guardian').length;
                 const premiumUsers = enriched.filter(u => u.subscriptionType === 'Premium').length;
-                setUserStats({ total: totalUsers, free: freeUsers, premium: premiumUsers });
+                const freeUsers = enriched.filter(u =>
+                    u.subscriptionType === 'Free' &&
+                    u.userType?.toLowerCase() !== 'guardian'
+                ).length;
 
-                // Build signup chart
+                setUsers(enriched);
+                setUserStats({ total: totalUsers, free: freeUsers, premium: premiumUsers, guardian: guardians });
+
                 const today = new Date();
                 const daily = Array.from({ length: 7 }, (_, i) => {
                     const d = new Date(today);
                     d.setDate(today.getDate() - (6 - i));
                     const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                    const count = enriched.filter(u => new Date(u.createdAt).toDateString() === d.toDateString()).length;
+                    const count = enriched.filter(u =>
+                        new Date(u.createdAt).toDateString() === d.toDateString()
+                    ).length;
                     return { date: label, users: count };
                 });
-                setSignupData(daily);
 
+                setSignupData(daily);
             } catch (err) {
                 console.error('Dashboard load failed:', err);
             } finally {
@@ -71,7 +78,6 @@ export default function Dashboard() {
         fetchData();
     }, []);
 
-    // Generate PDF report
     async function downloadReport(date) {
         if (!date) {
             alert('Please select a date');
@@ -102,7 +108,8 @@ export default function Dashboard() {
 
     const pieData = [
         { name: 'Free Users', value: userStats.free },
-        { name: 'Premium Users', value: userStats.premium }
+        { name: 'Premium Users', value: userStats.premium },
+        { name: 'Guardians', value: userStats.guardian }
     ];
 
     return (
@@ -141,7 +148,7 @@ export default function Dashboard() {
                                 <XAxis dataKey="date" />
                                 <YAxis />
                                 <Tooltip />
-                                <Bar dataKey="users" />
+                                <Bar dataKey="users" fill="#8884d8" />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
@@ -150,8 +157,16 @@ export default function Dashboard() {
                         <h3>User Distribution</h3>
                         <ResponsiveContainer width="100%" height={250}>
                             <PieChart>
-                                <Pie data={pieData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, value }) => `${name} (${value})`}>
-                                    {pieData.map((_, i) => (<Cell key={i} fill={COLORS[i]} />))}
+                                <Pie
+                                    data={pieData}
+                                    cx="50%" cy="50%"
+                                    outerRadius={80}
+                                    dataKey="value"
+                                    label={({ name, value }) => `${name} (${value})`}
+                                >
+                                    {pieData.map((_, i) => (
+                                        <Cell key={i} fill={COLORS[i]} />
+                                    ))}
                                 </Pie>
                                 <Tooltip />
                             </PieChart>
@@ -163,20 +178,34 @@ export default function Dashboard() {
                     <div className="table-container" style={{ flexGrow: 1, maxWidth: '70%' }}>
                         <div className="table-header" style={{ display: 'flex', justifyContent: 'space-between' }}>
                             <h3>User Table</h3>
-                            <span className="expand-text" onClick={() => router.push('/user-management')} style={{ cursor: 'pointer', color: '#007bff', fontWeight: 'bold' }}>
+                            <span
+                                className="expand-text"
+                                onClick={() => router.push('/user-management')}
+                                style={{ cursor: 'pointer', color: '#007bff', fontWeight: 'bold' }}
+                            >
                                 Click to Expand &gt;
                             </span>
                         </div>
                         <table className="user-table">
                             <thead>
                             <tr>
-                                <th>#</th><th>Email</th><th>User Type</th><th>Subscription</th><th>Scan Count</th><th>Guardian Access</th>
+                                <th>#</th>
+                                <th>Email</th>
+                                <th>Account Type</th>
+                                <th>Subscription</th>
+                                <th>Scan Count</th>
+                                <th>Guardian Access</th>
                             </tr>
                             </thead>
                             <tbody>
                             {users.slice(0, 3).map(u => (
                                 <tr key={u.user_id}>
-                                    <td>{u.user_id}</td><td>{u.email}</td><td>{u.userType}</td><td>{u.subscriptionType}</td><td>{u.scanCount}</td><td>{u.guardianModeAccess ?? u.guardianMode ? 'Yes' : 'No'}</td>
+                                    <td>{u.user_id}</td>
+                                    <td>{u.email}</td>
+                                    <td>{u.userType}</td>
+                                    <td>{u.subscriptionType}</td>
+                                    <td>{u.scanCount}</td>
+                                    <td>{u.guardianModeAccess ?? u.guardianMode ? 'Yes' : 'No'}</td>
                                 </tr>
                             ))}
                             </tbody>
@@ -185,7 +214,11 @@ export default function Dashboard() {
 
                     <div className="report-box" style={{ marginLeft: '20px' }}>
                         <h3>Generate Report</h3>
-                        <input type="date" id="report-date" style={{ padding: '8px', marginBottom: '10px', display: 'block' }} />
+                        <input
+                            type="date"
+                            id="report-date"
+                            style={{ padding: '8px', marginBottom: '10px', display: 'block' }}
+                        />
                         <button className="generate-report-button" onClick={() => downloadReport(document.getElementById('report-date').value)}>
                             Generate Report
                         </button>
