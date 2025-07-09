@@ -8,7 +8,7 @@ import {
     PieChart, Pie, Cell, ResponsiveContainer
 } from 'recharts';
 
-const COLORS = ['#f97316', '#3b82f6', '#22c55e']; // Free = orange, Premium = blue, Guardian = green
+const COLORS = ['#f97316', '#3b82f6', '#22c55e'];
 
 export default function Dashboard() {
     const router = useRouter();
@@ -27,12 +27,32 @@ export default function Dashboard() {
         async function fetchData() {
             try {
                 const dash = await getAdminDashboard();
-                const od = dash.data?.onlineUsers ?? dash.onlineUsers;
+                const od = dash.data?.onlineUsers ?? dash.onlineUsers ?? 0;
                 setOnlineCount(od);
+
+                const rawSignups = dash.newSignupsLast7Days || dash.data?.newSignupsLast7Days || [];
+
+                const signupMap = {};
+                rawSignups.forEach(entry => {
+                    signupMap[entry.date] = entry.count;
+                });
+
+                const today = new Date();
+                const last7Days = Array.from({ length: 7 }, (_, i) => {
+                    const d = new Date(today);
+                    d.setDate(today.getDate() - (6 - i));
+                    const isoDate = d.getFullYear() + '-' +
+                        String(d.getMonth() + 1).padStart(2, '0') + '-' +
+                        String(d.getDate()).padStart(2, '0');
+                    const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    const count = signupMap[isoDate] || 0;
+                    return { date: label, users: count };
+                });
+
+                setSignupData(last7Days);
 
                 const listRes = await listUsersAdmin(1, 1000, '');
                 const all = listRes.users || [];
-
                 const nonAdmin = all.filter(u => u.userType?.toLowerCase() !== 'admin');
 
                 const enriched = await Promise.all(
@@ -55,19 +75,6 @@ export default function Dashboard() {
 
                 setUsers(enriched);
                 setUserStats({ total: totalUsers, free: freeUsers, premium: premiumUsers, guardian: guardians });
-
-                const today = new Date();
-                const daily = Array.from({ length: 7 }, (_, i) => {
-                    const d = new Date(today);
-                    d.setDate(today.getDate() - (6 - i));
-                    const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                    const count = enriched.filter(u =>
-                        new Date(u.createdAt).toDateString() === d.toDateString()
-                    ).length;
-                    return { date: label, users: count };
-                });
-
-                setSignupData(daily);
             } catch (err) {
                 console.error('Dashboard load failed:', err);
             } finally {
@@ -89,16 +96,58 @@ export default function Dashboard() {
                 method: 'GET',
                 headers: { Authorization: `Bearer ${token}` }
             });
-            if (!res.ok) throw new Error('Failed to download report');
-            const blob = await res.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `Admin_Report_${date}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            window.URL.revokeObjectURL(url);
+            if (!res.ok) throw new Error('Failed to fetch report');
+            const data = await res.json();
+            const rawUsers = data?.data?.users || [];
+
+            const users = rawUsers.filter(u => u.userType?.toLowerCase() !== 'admin');
+
+            const summary = {
+                premiumUsers: 0,
+                freeUsers: 0,
+                guardians: 0,
+                totalScans: 0
+            };
+
+            users.forEach(u => {
+                if (u.subscriptionType === 'Premium') summary.premiumUsers++;
+                if (u.subscriptionType === 'Free') summary.freeUsers++;
+                if (u.userType?.toLowerCase() === 'guardian') summary.guardians++;
+                summary.totalScans += u.scanCount;
+            });
+
+            const headers = ['User ID', 'Email', 'Account Type', 'Subscription', 'Scan Count', 'Guardian Access'];
+            const rows = users.map(u => [
+                u.user_id,
+                u.email,
+                u.userType,
+                u.subscriptionType,
+                u.scanCount,
+                u.guardianModeAccess
+            ]);
+
+            const summaryRows = [
+                [],
+                ['SUMMARY'],
+                ['Premium Users', summary.premiumUsers],
+                ['Free Users', summary.freeUsers],
+                ['Guardians', summary.guardians],
+                ['Total Scans', summary.totalScans]
+            ];
+
+            const csvContent = [headers, ...rows, ...summaryRows]
+                .map(row => row.map(value => `"${value}"`).join(','))
+                .join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `Admin_Report_${date}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         } catch (err) {
             alert(err.message);
         }
@@ -212,14 +261,21 @@ export default function Dashboard() {
                         </table>
                     </div>
 
-                    <div className="report-box" style={{ marginLeft: '20px' }}>
+                    <div className="report-box">
                         <h3>Generate Report</h3>
                         <input
                             type="date"
                             id="report-date"
+                            max={new Date().toISOString().split('T')[0]}
                             style={{ padding: '8px', marginBottom: '10px', display: 'block' }}
                         />
-                        <button className="generate-report-button" onClick={() => downloadReport(document.getElementById('report-date').value)}>
+                        <button
+                            className="generate-report-button"
+                            onClick={() => {
+                                const date = document.getElementById('report-date').value;
+                                downloadReport(date);
+                            }}
+                        >
                             Generate Report
                         </button>
                     </div>

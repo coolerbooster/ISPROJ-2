@@ -48,29 +48,21 @@ export default function ViewPhotos() {
                     <table className="photo-table">
                         <thead>
                         <tr>
-                            <th>ID</th>
                             <th>Name</th>
                             <th>Type</th>
                             <th>Image</th>
-                            <th>Audio</th>
                             <th>Action</th>
                         </tr>
                         </thead>
                         <tbody>
                         {scans.map((scan) => (
                             <tr key={scan.scan_id}>
-                                <td>{scan.scan_id}</td>
                                 <td>{scan.name || '(Untitled)'}</td>
                                 <td>{scan.type}</td>
                                 <td>
                                     {scan.imageUrl ? (
                                         <img src={scan.imageUrl} alt="Scan" className="photo-thumb" />
                                     ) : 'No image'}
-                                </td>
-                                <td>
-                                    {scan.audioUrl ? (
-                                        <audio controls src={scan.audioUrl}></audio>
-                                    ) : 'No audio'}
                                 </td>
                                 <td>
                                     <button className="edit-btn" onClick={() => handleEdit(scan.scan_id)}>Edit</button>
@@ -80,7 +72,7 @@ export default function ViewPhotos() {
                         ))}
                         {scans.length === 0 && (
                             <tr>
-                                <td colSpan="6">No scans found for this user.</td>
+                                <td colSpan="4">No scans found for this user.</td>
                             </tr>
                         )}
                         </tbody>
