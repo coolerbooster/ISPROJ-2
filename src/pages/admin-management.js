@@ -1,3 +1,4 @@
+// pages/admin-management.js
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Navbar from '../components/Navbar';
@@ -11,12 +12,19 @@ export default function AdminManagement() {
     const router = useRouter();
 
     useEffect(() => {
+        console.log('🏷️  AdminManagement mounted, loading admins…');
         const loadAdmins = async () => {
-            const data = await AdminController.getAdmins();
-            setAdmins(data);
+            try {
+                const data = await AdminController.getAdmins();
+                console.log('🏷️  AdminManagement — setAdmins with:', data);
+                setAdmins(data);
+            } catch (err) {
+                console.error('🛑 AdminManagement loadAdmins error:', err);
+            }
         };
         loadAdmins();
     }, []);
+
 
     const handleSearch = async (e) => {
         const query = e.target.value;
