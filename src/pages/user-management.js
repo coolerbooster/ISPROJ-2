@@ -1,3 +1,5 @@
+// pages/user-management.js
+
 import React, { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import { useRouter } from "next/router";
@@ -10,22 +12,28 @@ export default function UserManagement() {
     const router = useRouter();
 
     useEffect(() => {
-        // whenever searchTerm or entriesPerPage changes, re-fetch
         fetchUsers();
     }, [searchTerm, entriesPerPage]);
 
     const fetchUsers = async () => {
         try {
             const res = await listUsersAdmin(1, entriesPerPage, searchTerm);
-            setUsers(res.users || []);
+            // strip out Admin accounts here:
+            const nonAdmin = (res.users || []).filter(
+                u => u.userType?.toLowerCase() !== "admin"
+            );
+            setUsers(nonAdmin);
         } catch (err) {
             console.error("Failed to fetch users", err);
         }
     };
 
     const handleView = (user) => {
-        // navigate to the photos page
-        router.push(`/view_photos?id=${user.user_id}&email=${encodeURIComponent(user.email)}`);
+        router.push(
+            `/view_photos?id=${user.user_id}&email=${encodeURIComponent(
+                user.email
+            )}`
+        );
     };
 
     const handleEdit = (user) => {
@@ -36,7 +44,7 @@ export default function UserManagement() {
         if (!confirm("Are you sure you want to delete this user?")) return;
         try {
             await deleteUserAdmin(id);
-            setUsers(u => u.filter(x => x.user_id !== id));
+            setUsers((u) => u.filter((x) => x.user_id !== id));
         } catch (err) {
             console.error(err);
             alert("Failed to delete user.");
@@ -53,7 +61,7 @@ export default function UserManagement() {
                     <div className="user-controls">
                         <select
                             value={entriesPerPage}
-                            onChange={e => setEntriesPerPage(Number(e.target.value))}
+                            onChange={(e) => setEntriesPerPage(Number(e.target.value))}
                         >
                             <option value={10}>Show 10 entries</option>
                             <option value={20}>Show 20 entries</option>
@@ -65,7 +73,7 @@ export default function UserManagement() {
                             type="text"
                             placeholder="Search by email"
                             value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
+                            onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
                 </div>
@@ -83,23 +91,32 @@ export default function UserManagement() {
                         </tr>
                         </thead>
                         <tbody>
-                        {users.map(user => (
+                        {users.map((user) => (
                             <tr key={user.user_id}>
                                 <td>{user.user_id}</td>
                                 <td>{user.email}</td>
-                                {/* use userType */}
                                 <td>{user.userType}</td>
-                                {/* subscriptionType: "Premium" vs "Free" */}
-                                <td>{user.subscriptionType === "Premium" ? "Yes" : "No"}</td>
+                                <td>
+                                    {user.subscriptionType === "Premium" ? "Yes" : "No"}
+                                </td>
                                 <td>{user.scanCount ?? 0}</td>
                                 <td>
-                                    <button className="view-btn" onClick={() => handleView(user)}>
+                                    <button
+                                        className="view-btn"
+                                        onClick={() => handleView(user)}
+                                    >
                                         View
                                     </button>
-                                    <button className="edit-btn" onClick={() => handleEdit(user)}>
+                                    <button
+                                        className="edit-btn"
+                                        onClick={() => handleEdit(user)}
+                                    >
                                         Edit
                                     </button>
-                                    <button className="delete-btn" onClick={() => handleDelete(user.user_id)}>
+                                    <button
+                                        className="delete-btn"
+                                        onClick={() => handleDelete(user.user_id)}
+                                    >
                                         Delete
                                     </button>
                                 </td>
