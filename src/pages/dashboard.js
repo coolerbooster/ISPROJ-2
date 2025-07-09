@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { listUsersAdmin } from '../services/apiService';
+import { getAdminDashboard, listUsersAdmin } from '../services/apiService';
 import Navbar from '../components/Navbar';
 import { AuthController } from '../controllers/AuthController';
 import {
@@ -14,7 +14,7 @@ export default function Dashboard() {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(true);
     const [users, setUsers] = useState([]);
-    const [userStats, setUserStats] = useState({ total: 0, premium: 0, free: 0 });
+    const [userStats, setUserStats] = useState({ total: 0, free: 0, premium: 0 });
     const [signupData, setSignupData] = useState([]);
     const [onlineCount, setOnlineCount] = useState(0);
 
@@ -26,49 +26,38 @@ export default function Dashboard() {
 
         const fetchData = async () => {
             try {
+                // fetch dashboard counts from backend (including nested data)
+                const dash = await getAdminDashboard();
+                // handle nested data structure
+                const od = dash.data?.onlineUsers ?? dash.onlineUsers;
+                setOnlineCount(od);
+
+                // fetch all accounts then strip out Admins
                 const userRes = await listUsersAdmin(1, 1000, '');
                 const allUsers = userRes.users || [];
-
-                // Only user and guardian accounts (exclude admin)
-                const filtered = allUsers.filter(
-                    u => u.userType?.toLowerCase() === 'user' || u.userType?.toLowerCase() === 'guardian'
+                const nonAdmin = allUsers.filter(
+                    u => u.userType?.toLowerCase() !== 'admin'
                 );
+                setUsers(nonAdmin);
 
-                setUsers(filtered);
+                // compute stats for non-admin users
+                const totalUsers   = nonAdmin.length;
+                const freeUsers    = nonAdmin.filter(u => u.subscriptionType === 'Free').length;
+                const premiumUsers = nonAdmin.filter(u => u.subscriptionType === 'Premium').length;
+                setUserStats({ total: totalUsers, free: freeUsers, premium: premiumUsers });
 
-                // Premium vs Free
-                const premium = filtered.filter(u => u.isPremiumUser || u.subscriptionType === 'Premium').length;
-                const free = filtered.length - premium;
-                setUserStats({ total: filtered.length, premium, free });
-
-                // Online = active within last 5 minutes
-                const now = new Date();
-                const online = filtered.filter(u => {
-                    const last = new Date(u.lastActiveAt);
-                    return (now - last) / 1000 < 300;
-                }).length;
-                setOnlineCount(online);
-
-                // Signup bar graph data (last 7 days)
+                // build signups-per-day (last 7 days)
                 const today = new Date();
-                const dailyCounts = Array.from({ length: 7 }, (_, i) => {
+                const daily = Array.from({ length: 7 }, (_, i) => {
                     const date = new Date(today);
                     date.setDate(today.getDate() - (6 - i));
                     const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
-                    const count = filtered.filter(u => {
-                        const created = new Date(u.createdAt);
-                        return (
-                            created.getFullYear() === date.getFullYear() &&
-                            created.getMonth() === date.getMonth() &&
-                            created.getDate() === date.getDate()
-                        );
-                    }).length;
-
-                    return { date: label, accounts: count };
+                    const count = nonAdmin.filter(u =>
+                        new Date(u.createdAt).toDateString() === date.toDateString()
+                    ).length;
+                    return { date: label, users: count };
                 });
-
-                setSignupData(dailyCounts);
+                setSignupData(daily);
             } catch (err) {
                 console.error('Dashboard load failed:', err);
             } finally {
@@ -82,34 +71,9 @@ export default function Dashboard() {
     if (isLoading) return null;
 
     const pieData = [
-        { name: 'Free Users', value: userStats.free },
+        { name: 'Free Users',    value: userStats.free    },
         { name: 'Premium Users', value: userStats.premium }
     ];
-
-    const downloadReport = async (date) => {
-        if (!date) return alert('Please select a date');
-        try {
-            const token = localStorage.getItem('jwt_token');
-            const res = await fetch(`http://167.71.198.130:3001/api/admin/report?date=${date}`, {
-                method: 'GET',
-                headers: { Authorization: `Bearer ${token}` }
-            });
-
-            if (!res.ok) throw new Error('Failed to download report');
-
-            const blob = await res.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `Admin_Report_${date}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            window.URL.revokeObjectURL(url);
-        } catch (err) {
-            alert(err.message);
-        }
-    };
 
     return (
         <div className="dashboard-container">
@@ -140,14 +104,14 @@ export default function Dashboard() {
 
                 <div className="charts-grid">
                     <div className="chart-card">
-                        <h3>New Accounts Created (Last 7 Days)</h3>
+                        <h3>New Signups (Last 7 Days)</h3>
                         <ResponsiveContainer width="100%" height={250}>
                             <BarChart data={signupData}>
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis dataKey="date" />
                                 <YAxis />
                                 <Tooltip />
-                                <Bar dataKey="accounts" fill="#4CAF50" />
+                                <Bar dataKey="users" fill="#4CAF50" />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
@@ -164,8 +128,8 @@ export default function Dashboard() {
                                     dataKey="value"
                                     label={({ name, value }) => `${name} (${value})`}
                                 >
-                                    {pieData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index]} />
+                                    {pieData.map((_, i) => (
+                                        <Cell key={i} fill={COLORS[i]} />
                                     ))}
                                 </Pie>
                                 <Tooltip />
@@ -183,8 +147,8 @@ export default function Dashboard() {
                                 onClick={() => router.push('/user-management')}
                                 style={{ cursor: 'pointer', color: '#007bff', fontWeight: 'bold' }}
                             >
-                                Click to Expand &gt;
-                            </span>
+                Click to Expand &gt;
+              </span>
                         </div>
                         <table className="user-table">
                             <thead>
@@ -198,14 +162,14 @@ export default function Dashboard() {
                             </tr>
                             </thead>
                             <tbody>
-                            {users.slice(0, 3).map(user => (
-                                <tr key={user.user_id}>
-                                    <td>{user.user_id}</td>
-                                    <td>{user.email}</td>
-                                    <td>{user.userType || user.accountType || '-'}</td>
-                                    <td>{user.subscriptionType || (user.isPremiumUser ? 'Premium' : 'Free')}</td>
-                                    <td>{user.scanCount ?? 0}</td>
-                                    <td>{user.guardianModeAccess ?? user.guardianMode ? 'Yes' : 'No'}</td>
+                            {users.slice(0, 3).map(u => (
+                                <tr key={u.user_id}>
+                                    <td>{u.user_id}</td>
+                                    <td>{u.email}</td>
+                                    <td>{u.userType}</td>
+                                    <td>{u.subscriptionType}</td>
+                                    <td>{u.scanCount ?? 0}</td>
+                                    <td>{u.guardianModeAccess ?? u.guardianMode ? 'Yes' : 'No'}</td>
                                 </tr>
                             ))}
                             </tbody>
