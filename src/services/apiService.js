@@ -98,6 +98,9 @@ export function getUserDetailAdmin(userId) {
 export function updateUserAdmin(userId, email, accountType, isPremiumUser, scanCount) {
     return request('PUT', `/api/admin/users/${userId}`, { email, accountType, isPremiumUser, scanCount }, true);
 }
+export function updateUserPasswordAdmin(userId, password) {
+    return request('PUT', `/api/admin/users/${userId}/password`, { password }, true);
+}
 export function deleteUserAdmin(userId) {
     return request('DELETE', `/api/admin/users/${userId}`, null, true);
 }

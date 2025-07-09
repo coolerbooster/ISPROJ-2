@@ -1,7 +1,9 @@
 import {
     createUserAsAdmin,
     listUsersAdmin,
-    deleteUserAdmin
+    deleteUserAdmin,
+    getUserDetailAdmin,
+    updateUserPasswordAdmin // ✅ You must create this in your API
 } from '../services/apiService';
 
 export const AdminController = {
@@ -17,23 +19,23 @@ export const AdminController = {
 
     async getAdmins() {
         const response = await listUsersAdmin(1, 100, '');
-        console.log('🧩 AdminController.getAdmins response:', response);
-        const allUsers = response.users || [];
-        const admins = allUsers.filter(u => u.accountType === 'Admin');
-        console.log('✅ Filtered admins:', admins);
-        return admins;
+        return response.users || [];
     },
 
     async searchAdmins(query) {
         const response = await listUsersAdmin(1, 100, query);
-        const allUsers = response.users || [];
-
-        return allUsers
-            .filter(user => user.accountType === 'Admin')
-            .map(user => ({ ...user, id: user.user_id }));
+        return response.users || [];
     },
 
     async deleteAdmin(userId) {
         return await deleteUserAdmin(userId);
+    },
+
+    async getAdminById(userId) {
+        return await getUserDetailAdmin(userId);
+    },
+
+    async updateAdminPassword(userId, newPassword) {
+        return await updateUserPasswordAdmin(userId, newPassword);
     }
 };

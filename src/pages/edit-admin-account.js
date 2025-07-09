@@ -7,25 +7,29 @@ export default function EditAdminAccount() {
     const router = useRouter();
     const [form, setForm] = useState({
         email: '',
-        firstName: '',
-        lastName: '',
         password: ''
     });
 
     useEffect(() => {
-        if (!router.isReady) return; // Wait until router is ready
+        if (!router.isReady) return;
 
-        const { id } = router.query;
-        const admin = AdminController.getAdminById(parseInt(id));
+        const fetchAdmin = async () => {
+            const { id } = router.query;
+            try {
+                const admin = await AdminController.getAdminById(parseInt(id));
+                if (admin) {
+                    setForm({
+                        email: admin.email,
+                        password: ''
+                    });
+                }
+            } catch (err) {
+                console.error('Failed to load admin:', err);
+                alert('Failed to load admin data');
+            }
+        };
 
-        if (admin) {
-            setForm({
-                email: admin.email,
-                firstName: admin.firstName,
-                lastName: admin.lastName,
-                password: admin.password
-            });
-        }
+        fetchAdmin();
     }, [router.isReady]);
 
     const handleChange = (e) => {
@@ -40,15 +44,15 @@ export default function EditAdminAccount() {
         const { id } = router.query;
 
         try {
-            await AdminController.updateAdmin(id, {
-                firstName: form.firstName,
-                lastName: form.lastName
-            });
+            await AdminController.updateAdminPassword(id, form.password);
+            alert('Password updated successfully.');
             router.push('/admin-management');
         } catch (error) {
-            alert(error.message);
+            console.error(error);
+            alert('Failed to update password.');
         }
     };
+
     return (
         <>
             <Navbar />
@@ -69,40 +73,17 @@ export default function EditAdminAccount() {
                     </div>
 
                     <div className="form-group">
-                        <label>First Name:</label>
-                        <input
-                            type="text"
-                            name="firstName"
-                            value={form.firstName}
-                            onChange={handleChange}
-                            required
-                        />
-                    </div>
-
-                    <div className="form-group">
-                        <label>Last Name:</label>
-                        <input
-                            type="text"
-                            name="lastName"
-                            value={form.lastName}
-                            onChange={handleChange}
-                            required
-                        />
-                    </div>
-
-                    <div className="form-group">
-                        <label>Password:</label>
+                        <label>New Password:</label>
                         <input
                             type="password"
                             name="password"
-                            value="••••••"
-                            disabled
-                            readOnly
-                            style={{ backgroundColor: '#e5e7eb', cursor: 'not-allowed' }}
+                            value={form.password}
+                            onChange={handleChange}
+                            required
                         />
                     </div>
 
-                    <button type="submit" className="add-admin-btn">Update Admin</button>
+                    <button type="submit" className="add-admin-btn">Update Password</button>
                 </form>
             </div>
         </>

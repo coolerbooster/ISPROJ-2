@@ -35,7 +35,6 @@ export default function Dashboard() {
                 const userRes = await listUsersAdmin(1, 100, '');
                 setUsers(userRes.users || []);
 
-                // Chart: last 7 days
                 const today = new Date();
                 const dailyCounts = Array.from({ length: 7 }, (_, i) => {
                     const date = new Date(today);
@@ -60,6 +59,39 @@ export default function Dashboard() {
 
         fetchData();
     }, []);
+
+    const downloadReport = async (date) => {
+        if (!date) {
+            alert('Please select a date');
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem('jwt_token');
+            const res = await fetch(`http://167.71.198.130:3001/api/admin/report?date=${date}`, {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+
+            if (!res.ok) {
+                throw new Error('Failed to download report');
+            }
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Admin_Report_${date}.pdf`; // Adjust extension if needed
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            alert(error.message);
+        }
+    };
 
     if (isLoading) return null;
 
@@ -132,24 +164,32 @@ export default function Dashboard() {
                     </div>
                 </div>
 
-                <div className="table-section">
-                    <div className="table-header">
-                        <h3>User Table <span className="expand-text">Click to Expand {String.fromCharCode(62)}</span></h3>
-                    </div>
-                    <div className="table-container">
+                <div className="table-section" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    {/* Left: User Table */}
+                    <div className="table-container" style={{ flexGrow: 1, maxWidth: '70%' }}>
+                        <div className="table-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h3>User Table</h3>
+                            <span
+                                className="expand-text"
+                                onClick={() => router.push('/user-management')}
+                                style={{ cursor: 'pointer', color: '#007bff', fontWeight: 'bold' }}
+                            >
+                                Click to Expand &gt;
+                            </span>
+                        </div>
                         <table className="user-table">
                             <thead>
                             <tr>
                                 <th>#</th>
                                 <th>Email</th>
                                 <th>UserType</th>
-                                <th>Subscription Type</th>
+                                <th>Subscription</th>
                                 <th>Scan Count</th>
-                                <th>Guardian Mode Access</th>
+                                <th>Guardian</th>
                             </tr>
                             </thead>
                             <tbody>
-                            {users.map(user => (
+                            {users.slice(0, 3).map((user) => (
                                 <tr key={user.user_id}>
                                     <td>{user.user_id}</td>
                                     <td>{user.email}</td>
@@ -161,6 +201,25 @@ export default function Dashboard() {
                             ))}
                             </tbody>
                         </table>
+                    </div>
+
+                    {/* Right: Report Box */}
+                    <div className="report-box" style={{ marginLeft: '20px' }}>
+                        <h3>Generate Report</h3>
+                        <input
+                            type="date"
+                            id="report-date"
+                            style={{ padding: '8px', marginBottom: '10px', display: 'block' }}
+                        />
+                        <button
+                            className="generate-report-button"
+                            onClick={() => {
+                                const date = document.getElementById('report-date').value;
+                                downloadReport(date);
+                            }}
+                        >
+                            Generate Report
+                        </button>
                     </div>
                 </div>
             </div>
