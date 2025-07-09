@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { getAdminDashboard, listUsersAdmin } from '../services/apiService';
+import { getAdminDashboard, listUsersAdmin, getUserScansAdmin } from '../services/apiService';
 import Navbar from '../components/Navbar';
 import { AuthController } from '../controllers/AuthController';
 import {
@@ -24,46 +24,58 @@ export default function Dashboard() {
             return;
         }
 
-        const fetchData = async () => {
+        async function fetchData() {
             try {
-                // fetch dashboard counts from backend (including nested data)
+                // 1) Dashboard summary
                 const dash = await getAdminDashboard();
-                // handle nested data structure
                 const od = dash.data?.onlineUsers ?? dash.onlineUsers;
                 setOnlineCount(od);
 
-                // fetch all accounts then strip out Admins
-                const userRes = await listUsersAdmin(1, 1000, '');
-                const allUsers = userRes.users || [];
-                const nonAdmin = allUsers.filter(
+                // 2) Fetch all non-admin users
+                const listRes = await listUsersAdmin(1, 1000, '');
+                const nonAdmin = (listRes.users || []).filter(
                     u => u.userType?.toLowerCase() !== 'admin'
                 );
-                setUsers(nonAdmin);
 
-                // compute stats for non-admin users
-                const totalUsers   = nonAdmin.length;
-                const freeUsers    = nonAdmin.filter(u => u.subscriptionType === 'Free').length;
-                const premiumUsers = nonAdmin.filter(u => u.subscriptionType === 'Premium').length;
+                // 3) Enrich each with true scan count
+                const enriched = await Promise.all(
+                    nonAdmin.map(async u => {
+                        const scansRes = await getUserScansAdmin(u.user_id);
+                        const count = Array.isArray(scansRes)
+                            ? scansRes.length
+                            : Array.isArray(scansRes.scans)
+                                ? scansRes.scans.length
+                                : 0;
+                        return { ...u, scanCount: count };
+                    })
+                );
+                setUsers(enriched);
+
+                // 4) Compute stats
+                const totalUsers   = enriched.length;
+                const freeUsers    = enriched.filter(u => u.subscriptionType === 'Free').length;
+                const premiumUsers = enriched.filter(u => u.subscriptionType === 'Premium').length;
                 setUserStats({ total: totalUsers, free: freeUsers, premium: premiumUsers });
 
-                // build signups-per-day (last 7 days)
+                // 5) Build sign-ups chart data
                 const today = new Date();
                 const daily = Array.from({ length: 7 }, (_, i) => {
-                    const date = new Date(today);
-                    date.setDate(today.getDate() - (6 - i));
-                    const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                    const count = nonAdmin.filter(u =>
-                        new Date(u.createdAt).toDateString() === date.toDateString()
+                    const d = new Date(today);
+                    d.setDate(today.getDate() - (6 - i));
+                    const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    const count = enriched.filter(u =>
+                        new Date(u.createdAt).toDateString() === d.toDateString()
                     ).length;
                     return { date: label, users: count };
                 });
                 setSignupData(daily);
+
             } catch (err) {
                 console.error('Dashboard load failed:', err);
             } finally {
                 setIsLoading(false);
             }
-        };
+        }
 
         fetchData();
     }, []);
@@ -111,7 +123,7 @@ export default function Dashboard() {
                                 <XAxis dataKey="date" />
                                 <YAxis />
                                 <Tooltip />
-                                <Bar dataKey="users" fill="#4CAF50" />
+                                <Bar dataKey="users" />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
@@ -146,9 +158,7 @@ export default function Dashboard() {
                                 className="expand-text"
                                 onClick={() => router.push('/user-management')}
                                 style={{ cursor: 'pointer', color: '#007bff', fontWeight: 'bold' }}
-                            >
-                Click to Expand &gt;
-              </span>
+                            >Click to Expand &gt;</span>
                         </div>
                         <table className="user-table">
                             <thead>
@@ -168,7 +178,7 @@ export default function Dashboard() {
                                     <td>{u.email}</td>
                                     <td>{u.userType}</td>
                                     <td>{u.subscriptionType}</td>
-                                    <td>{u.scanCount ?? 0}</td>
+                                    <td>{u.scanCount}</td>
                                     <td>{u.guardianModeAccess ?? u.guardianMode ? 'Yes' : 'No'}</td>
                                 </tr>
                             ))}
@@ -178,20 +188,11 @@ export default function Dashboard() {
 
                     <div className="report-box" style={{ marginLeft: '20px' }}>
                         <h3>Generate Report</h3>
-                        <input
-                            type="date"
-                            id="report-date"
-                            style={{ padding: '8px', marginBottom: '10px', display: 'block' }}
-                        />
-                        <button
-                            className="generate-report-button"
-                            onClick={() => {
-                                const date = document.getElementById('report-date').value;
-                                downloadReport(date);
-                            }}
-                        >
-                            Generate Report
-                        </button>
+                        <input type="date" id="report-date" style={{ padding: '8px', marginBottom: '10px', display: 'block' }} />
+                        <button className="generate-report-button" onClick={() => {
+                            const date = document.getElementById('report-date').value;
+                            downloadReport(date);
+                        }}>Generate Report</button>
                     </div>
                 </div>
             </div>
