@@ -1,19 +1,25 @@
+// pages/forgot-password.js
+
 import { useState } from 'react';
+import { useRouter } from 'next/router';
 import { forgotPassword } from '../services/apiService';
 
 export default function ForgotPassword() {
     const [email, setEmail] = useState('');
-    const [message, setMessage] = useState('');
     const [error, setError] = useState('');
+    const router = useRouter();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setMessage('');
         setError('');
 
         try {
-            const res = await forgotPassword(email);
-            setMessage('Reset code sent to your email.');
+            await forgotPassword(email);
+            // redirect to the reset-password page, carrying the email in the query
+            router.push({
+                pathname: '/Reset-Password',
+                query: { email },
+            });
         } catch (err) {
             setError(err.message || 'Failed to send reset code.');
         }
@@ -23,12 +29,23 @@ export default function ForgotPassword() {
         <div className="login-container">
             <h2>Forgot Password</h2>
             <form onSubmit={handleSubmit} className="login-form">
-                <label>Email:</label>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                <label htmlFor="email">Email:</label>
+                <input
+                    id="email"
+                    type="email"
+                    required
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                />
+
                 <button type="submit">Send Reset Code</button>
+
+                {error && (
+                    <p style={{ marginTop: '10px', color: 'red' }}>
+                        {error}
+                    </p>
+                )}
             </form>
-            {message && <p style={{ marginTop: '10px', color: 'green' }}>{message}</p>}
-            {error && <p style={{ marginTop: '10px', color: 'red' }}>{error}</p>}
         </div>
     );
 }
