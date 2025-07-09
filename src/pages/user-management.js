@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import { useRouter } from "next/router";
-import { listUsersAdmin, deleteUserAdmin } from "../services/apiService";
+import { listUsersAdmin, deleteUserAdmin, updateUserAdmin } from "../services/apiService";
 
 export default function UserManagement() {
     const [allUsers, setAllUsers] = useState([]);
@@ -9,6 +9,8 @@ export default function UserManagement() {
     const [searchTerm, setSearchTerm] = useState("");
     const [entriesPerPage, setEntriesPerPage] = useState(10);
     const [currentPage, setCurrentPage] = useState(1);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editUserData, setEditUserData] = useState({ user_id: null, email: '', password: '', subscriptionType: 'Free' });
     const router = useRouter();
 
     useEffect(() => {
@@ -43,7 +45,13 @@ export default function UserManagement() {
     };
 
     const handleEdit = (user) => {
-        router.push(`/edit-user?id=${user.user_id}`);
+        setEditUserData({
+            user_id: user.user_id,
+            email: user.email,
+            password: '',
+            subscriptionType: user.subscriptionType || 'Free'
+        });
+        setShowEditModal(true);
     };
 
     const handleDelete = async (id) => {
@@ -54,6 +62,20 @@ export default function UserManagement() {
         } catch (err) {
             console.error(err);
             alert("Failed to delete user.");
+        }
+    };
+
+    const handleUpdate = async () => {
+        try {
+            await updateUserAdmin(editUserData.user_id, {
+                email: editUserData.email,
+                password: editUserData.password,
+                subscriptionType: editUserData.subscriptionType
+            });
+            setShowEditModal(false);
+            fetchUsers();
+        } catch (err) {
+            alert("Failed to update user.");
         }
     };
 
@@ -180,6 +202,78 @@ export default function UserManagement() {
                     {renderPagination()}
                 </div>
             </div>
+
+            {showEditModal && (
+                <div className="modal-overlay">
+                    <div className="modal-box">
+                        <h2>Edit User</h2>
+                        <div className="form-row">
+                            <label>Email</label>
+                            <input
+                                type="email"
+                                className="input-field"
+                                value={editUserData.email}
+                                onChange={(e) =>
+                                    setEditUserData({ ...editUserData, email: e.target.value })
+                                }
+                            />
+                        </div>
+                        <div className="form-row">
+                            <label>Password</label>
+                            <input
+                                type="password"
+                                className="input-field"
+                                value={editUserData.password}
+                                onChange={(e) =>
+                                    setEditUserData({ ...editUserData, password: e.target.value })
+                                }
+                            />
+                        </div>
+                        <div className="form-row">
+                            <label>Subscription</label>
+                            <select
+                                className="input-field"
+                                value={editUserData.subscriptionType}
+                                onChange={(e) =>
+                                    setEditUserData({ ...editUserData, subscriptionType: e.target.value })
+                                }
+                            >
+                                <option value="Free">Free</option>
+                                <option value="Premium">Premium</option>
+                            </select>
+                        </div>
+                        <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                            <button
+                                style={{
+                                    padding: '0.5rem 1rem',
+                                    backgroundColor: '#3b82f6',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    marginRight: '10px',
+                                    cursor: 'pointer'
+                                }}
+                                onClick={handleUpdate}
+                            >
+                                Save
+                            </button>
+                            <button
+                                style={{
+                                    padding: '0.5rem 1rem',
+                                    backgroundColor: '#6b7280',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer'
+                                }}
+                                onClick={() => setShowEditModal(false)}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 }

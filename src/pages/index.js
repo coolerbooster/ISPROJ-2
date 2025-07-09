@@ -13,7 +13,7 @@ export default function Login() {
         e.preventDefault();
         try {
             const res = await login(email, password);
-            sessionStorage.setItem('jwt_token', res.token);
+            localStorage.setItem('jwt_token', res.token); // 👈 changed
             router.push('/dashboard');
         } catch (err) {
             setError(err.message || 'Login failed');
@@ -22,13 +22,13 @@ export default function Login() {
 
     useEffect(() => {
         const checkToken = async () => {
-            const token = sessionStorage.getItem('jwt_token');
+            const token = localStorage.getItem('jwt_token'); // 👈 changed
             if (token) {
                 try {
                     await getUserProfile();
                     router.replace('/dashboard');
                 } catch {
-                    sessionStorage.removeItem('jwt_token');
+                    localStorage.removeItem('jwt_token'); // 👈 changed
                     setCheckingAuth(false);
                 }
             } else {
