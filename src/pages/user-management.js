@@ -4,7 +4,8 @@ import { useRouter } from "next/router";
 import {
     listUsersAdmin,
     deleteUserAdmin,
-    updateUserAdmin
+    updateUserAdmin,
+    getUserScansAdmin
 } from "../services/apiService";
 
 export default function UserManagement() {
@@ -18,7 +19,7 @@ export default function UserManagement() {
     const [editUserData, setEditUserData] = useState({
         user_id: null,
         email: "",
-        accountType: "User",
+        accountType: "User",    // preserve userType for update
         isPremiumUser: false,
         password: "",
         passwordEditable: false,
@@ -39,10 +40,19 @@ export default function UserManagement() {
     async function fetchUsers() {
         try {
             const res = await listUsersAdmin(1, 1000, searchTerm);
-            const nonAdmin = (res.users || []).filter(
-                u => u.userType?.toLowerCase() !== "admin"
+            const nonAdmin = (res.users || []).filter(u => u.userType?.toLowerCase() !== "admin");
+            const enriched = await Promise.all(
+                nonAdmin.map(async user => {
+                    const scansRes = await getUserScansAdmin(user.user_id);
+                    const count = Array.isArray(scansRes)
+                        ? scansRes.length
+                        : Array.isArray(scansRes.scans)
+                            ? scansRes.scans.length
+                            : 0;
+                    return { ...user, scanCount: count };
+                })
             );
-            setAllUsers(nonAdmin);
+            setAllUsers(enriched);
             setCurrentPage(1);
         } catch (err) {
             console.error("Failed to fetch users", err);
@@ -50,16 +60,18 @@ export default function UserManagement() {
     }
 
     function handleView(user) {
-        router.push(`/view_photos?id=${user.user_id}&email=${encodeURIComponent(user.email)}`);
+        router.push(
+            `/view_photos?id=${user.user_id}&email=${encodeURIComponent(user.email)}`
+        );
     }
 
     function handleEdit(user) {
         setEditUserData({
             user_id: user.user_id,
             email: user.email,
-            accountType: user.userType,
+            accountType: user.userType,        // capture existing userType
             isPremiumUser: user.subscriptionType === "Premium",
-            scanCount: user.scanCount ?? 0,
+            scanCount: user.scanCount || 0,
             password: "",
             passwordEditable: false
         });
@@ -82,7 +94,7 @@ export default function UserManagement() {
             await updateUserAdmin(
                 editUserData.user_id,
                 editUserData.email,
-                editUserData.accountType,
+                editUserData.accountType,      // now pass accountType
                 editUserData.isPremiumUser,
                 editUserData.scanCount
             );
@@ -110,80 +122,77 @@ export default function UserManagement() {
         <>
             <Navbar />
             <div className="user-container">
-                <div className="top-controls">
-                    <h1 className="user-title">User Management</h1>
-                    <div className="entries-search-row">
-                        <div className="entries-label">
-                            Show{' '}
-                            <select
-                                className="entries-select"
-                                value={entriesPerPage}
-                                onChange={e => { setEntriesPerPage(+e.target.value); setCurrentPage(1); }}
-                            >
-                                <option value={10}>10</option>
-                                <option value={20}>20</option>
-                                <option value={30}>30</option>
-                            </select>
-                            {' '}entries
-                        </div>
-                        <div className="search-container">
-                            <label htmlFor="search">Search: </label>
-                            <input
-                                type="text"
-                                placeholder="by email"
-                                value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
-                            />
-                        </div>
+                <h1 className="user-title">User Management</h1>
+                <div className="user-top-bar">
+                    <div className="user-controls">
+                        Show{' '}
+                        <select
+                            value={entriesPerPage}
+                            onChange={e => { setEntriesPerPage(+e.target.value); setCurrentPage(1); }}
+                        >
+                            <option value={10}>10</option>
+                            <option value={20}>20</option>
+                            <option value={30}>30</option>
+                        </select>{' '}
+                        entries
                     </div>
+                    <div className="user-controls">
+                        <input
+                            type="text"
+                            placeholder="Search by email"
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                </div>
 
-                    <div className="table-container">
-                        <table className="user-table">
-                            <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Email</th>
-                                <th>Account Type</th>
-                                <th>Premium</th>
-                                <th>Scan Count</th>
-                                <th>Actions</th>
+                <div className="table-container">
+                    <table className="user-table">
+                        <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Email</th>
+                            <th>Premium</th>
+                            <th>Scan Count</th>
+                            <th>Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {users.map(u => (
+                            <tr key={u.user_id}>
+                                <td>{u.user_id}</td>
+                                <td>{u.email}</td>
+                                <td>{u.subscriptionType === 'Premium' ? 'Yes' : 'No'}</td>
+                                <td>{u.scanCount}</td>
+                                <td>
+                                    <button className="view-btn" onClick={() => handleView(u)}>View</button>
+                                    <button className="edit-btn" onClick={() => handleEdit(u)}>Edit</button>
+                                    <button className="delete-btn" onClick={() => handleDelete(u.user_id)}>Delete</button>
+                                </td>
                             </tr>
-                            </thead>
-                            <tbody>
-                            {users.map(u => (
-                                <tr key={u.user_id}>
-                                    <td>{u.user_id}</td>
-                                    <td>{u.email}</td>
-                                    <td>{u.userType}</td>
-                                    <td>{u.subscriptionType === 'Premium' ? 'Yes' : 'No'}</td>
-                                    <td>{u.scanCount}</td>
-                                    <td>
-                                        <button className="view-btn" onClick={() => handleView(u)}>View</button>
-                                        <button className="edit-btn" onClick={() => handleEdit(u)}>Edit</button>
-                                        <button className="delete-btn" onClick={() => handleDelete(u.user_id)}>Delete</button>
-                                    </td>
-                                </tr>
-                            ))}
-                            {users.length === 0 && <tr><td colSpan={6}>No users found.</td></tr>}
-                            </tbody>
-                        </table>
-
-                        {totalPages > 1 && (
-                            <div className="pagination">
-                                <button disabled={currentPage === 1} onClick={() => setCurrentPage(currentPage - 1)}>&lt;</button>
-                                {pages.map((p, idx) => p === '...' ? (
-                                    <span key={idx} className="ellipsis">...</span>
-                                ) : (
+                        ))}
+                        {users.length === 0 && (
+                            <tr>
+                                <td colSpan={5} className="no-users">No users found.</td>
+                            </tr>
+                        )}
+                        </tbody>
+                    </table>
+                    {totalPages > 1 && (
+                        <div className="pagination">
+                            <button disabled={currentPage === 1} onClick={() => setCurrentPage(currentPage - 1)}>&lt;</button>
+                            {pages.map((p, idx) => (
+                                p === '...' ? <span key={idx} className="ellipsis">...</span> : (
                                     <button
                                         key={p}
                                         className={currentPage === p ? 'active' : ''}
                                         onClick={() => setCurrentPage(p)}
                                     >{p}</button>
-                                ))}
-                                <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(currentPage + 1)}>&gt;</button>
-                            </div>
-                        )}
-                    </div>
+                                )
+                            ))}
+                            <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(currentPage + 1)}>&gt;</button>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -198,16 +207,6 @@ export default function UserManagement() {
                                 value={editUserData.email}
                                 onChange={e => setEditUserData({ ...editUserData, email: e.target.value })}
                             />
-                        </div>
-                        <div className="form-row">
-                            <label>Account Type</label>
-                            <select
-                                value={editUserData.accountType}
-                                onChange={e => setEditUserData({ ...editUserData, accountType: e.target.value })}
-                            >
-                                <option value="User">User</option>
-                                <option value="Guardian">Guardian</option>
-                            </select>
                         </div>
                         <div className="form-row">
                             <label>Premium?</label>
