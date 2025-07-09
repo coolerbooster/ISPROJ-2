@@ -25,6 +25,7 @@ export default function Dashboard() {
 
         const fetchData = async () => {
             try {
+                // 1) get summary counts
                 const dashboard = await getAdminDashboard();
                 setUserStats({
                     total: dashboard.totalUsers,
@@ -32,25 +33,36 @@ export default function Dashboard() {
                     free: dashboard.freeUsers
                 });
 
+                // 2) fetch all users, then exclude Admins
                 const userRes = await listUsersAdmin(1, 100, '');
-                setUsers(userRes.users || []);
+                const allUsers = userRes.users || [];
+                const nonAdminUsers = allUsers.filter(
+                    u => u.userType?.toLowerCase() !== 'admin'
+                );
+                setUsers(nonAdminUsers);
 
-                // Chart: last 7 days
+                // 3) build daily signup counts for the last 7 days
                 const today = new Date();
                 const dailyCounts = Array.from({ length: 7 }, (_, i) => {
                     const date = new Date(today);
                     date.setDate(today.getDate() - (6 - i));
-                    const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    const label = date.toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric'
+                    });
 
-                    const count = userRes.users.filter(u => {
+                    const count = nonAdminUsers.filter(u => {
                         const createdAt = new Date(u.createdAt);
-                        return createdAt.toDateString() === date.toDateString() && u.accountType !== 'admin';
+                        return (
+                            createdAt.toDateString() === date.toDateString() &&
+                            u.userType?.toLowerCase() !== 'admin'
+                        );
                     }).length;
 
                     return { date: label, users: count };
                 });
-
                 setSignupData(dailyCounts);
+
             } catch (err) {
                 console.error('Dashboard load failed:', err);
             } finally {
@@ -71,6 +83,7 @@ export default function Dashboard() {
     return (
         <div className="dashboard-container">
             <Navbar />
+
             <div className="dashboard-content">
                 <div className="dashboard-header">
                     <h1>ADMIN DASHBOARD</h1>
@@ -78,10 +91,6 @@ export default function Dashboard() {
 
                 <div className="stats-container">
                     <div className="stat-card green">
-                        <div className="stat-number">158</div>
-                        <div className="stat-label">Online Users</div>
-                    </div>
-                    <div className="stat-card blue">
                         <div className="stat-number">{userStats.total}</div>
                         <div className="stat-label">Total Users</div>
                     </div>
@@ -104,7 +113,7 @@ export default function Dashboard() {
                                 <XAxis dataKey="date" />
                                 <YAxis />
                                 <Tooltip />
-                                <Bar dataKey="users" fill="#4CAF50" />
+                                <Bar dataKey="users" />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
@@ -118,12 +127,11 @@ export default function Dashboard() {
                                     cx="50%"
                                     cy="50%"
                                     outerRadius={80}
-                                    fill="#8884d8"
                                     dataKey="value"
-                                    label={({ name, value }) => `${name} ${value}`}
+                                    label={({ name, value }) => `${name} (${value})`}
                                 >
                                     {pieData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        <Cell key={`cell-${index}`} fill={COLORS[index]} />
                                     ))}
                                 </Pie>
                                 <Tooltip />
@@ -134,7 +142,12 @@ export default function Dashboard() {
 
                 <div className="table-section">
                     <div className="table-header">
-                        <h3>User Table <span className="expand-text">Click to Expand {String.fromCharCode(62)}</span></h3>
+                        <h3>
+                            User Table{' '}
+                            <span className="expand-text">
+                Click to Expand &gt;
+              </span>
+                        </h3>
                     </div>
                     <div className="table-container">
                         <table className="user-table">
@@ -153,10 +166,10 @@ export default function Dashboard() {
                                 <tr key={user.user_id}>
                                     <td>{user.user_id}</td>
                                     <td>{user.email}</td>
-                                    <td>{user.accountType}</td>
-                                    <td>{user.isPremiumUser ? 'Premium' : 'Free'}</td>
+                                    <td>{user.userType}</td>
+                                    <td>{user.subscriptionType}</td>
                                     <td>{user.scanCount ?? 0}</td>
-                                    <td>{user.guardianMode ? 'Yes' : 'No'}</td>
+                                    <td>{user.guardianModeAccess}</td>
                                 </tr>
                             ))}
                             </tbody>
