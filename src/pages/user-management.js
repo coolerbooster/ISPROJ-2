@@ -1,11 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import { useRouter } from "next/router";
-import {
-    listUsersAdmin,
-    deleteUserAdmin,
-    updateUserAdmin
-} from "../services/apiService";
+import { listUsersAdmin, deleteUserAdmin, updateUserAdmin } from "../services/apiService";
 
 export default function UserManagement() {
     const [allUsers, setAllUsers] = useState([]);
@@ -18,19 +14,16 @@ export default function UserManagement() {
     const [editUserData, setEditUserData] = useState({
         user_id: null,
         email: "",
-        accountType: "User",    // renamed from userType
+        accountType: "User",
         isPremiumUser: false,
         password: "",
         passwordEditable: false,
-        scanCount: 0             // preserve original scanCount
+        scanCount: 0
     });
 
     const router = useRouter();
 
-    useEffect(() => {
-        fetchUsers();
-    }, [searchTerm]);
-
+    useEffect(() => { fetchUsers(); }, [searchTerm]);
     useEffect(() => {
         const start = (currentPage - 1) * entriesPerPage;
         setUsers(allUsers.slice(start, start + entriesPerPage));
@@ -39,9 +32,7 @@ export default function UserManagement() {
     async function fetchUsers() {
         try {
             const res = await listUsersAdmin(1, 1000, searchTerm);
-            const nonAdmin = (res.users || []).filter(
-                u => u.userType?.toLowerCase() !== "admin"
-            );
+            const nonAdmin = (res.users || []).filter(u => u.userType?.toLowerCase() !== "admin");
             setAllUsers(nonAdmin);
             setCurrentPage(1);
         } catch (err) {
@@ -57,9 +48,9 @@ export default function UserManagement() {
         setEditUserData({
             user_id: user.user_id,
             email: user.email,
-            accountType: user.userType,        // map backend field
+            accountType: user.userType,
             isPremiumUser: user.subscriptionType === "Premium",
-            scanCount: user.scanCount ?? 0,     // preserve existing
+            scanCount: user.scanCount ?? 0,
             password: "",
             passwordEditable: false
         });
@@ -84,7 +75,7 @@ export default function UserManagement() {
                 editUserData.email,
                 editUserData.accountType,
                 editUserData.isPremiumUser,
-                editUserData.scanCount  // pass preserved count
+                editUserData.scanCount
             );
             setShowEditModal(false);
             fetchUsers();
@@ -114,15 +105,11 @@ export default function UserManagement() {
                 <div className="user-top-bar">
                     <div className="user-controls">
                         Show{' '}
-                        <select
-                            value={entriesPerPage}
-                            onChange={e => { setEntriesPerPage(+e.target.value); setCurrentPage(1); }}
-                        >
+                        <select value={entriesPerPage} onChange={e => { setEntriesPerPage(+e.target.value); setCurrentPage(1); }}>
                             <option value={10}>10</option>
                             <option value={20}>20</option>
                             <option value={30}>30</option>
-                        </select>
-                        {' '}entries
+                        </select>{' '}entries
                     </div>
                     <div className="user-controls">
                         <input
@@ -140,7 +127,6 @@ export default function UserManagement() {
                         <tr>
                             <th>ID</th>
                             <th>Email</th>
-                            <th>Account Type</th>
                             <th>Premium</th>
                             <th>Scan Count</th>
                             <th>Actions</th>
@@ -151,7 +137,6 @@ export default function UserManagement() {
                             <tr key={u.user_id}>
                                 <td>{u.user_id}</td>
                                 <td>{u.email}</td>
-                                <td>{u.userType}</td>
                                 <td>{u.subscriptionType === 'Premium' ? 'Yes' : 'No'}</td>
                                 <td>{u.scanCount}</td>
                                 <td>
@@ -161,7 +146,11 @@ export default function UserManagement() {
                                 </td>
                             </tr>
                         ))}
-                        {users.length === 0 && <tr><td colSpan={6}>No users found.</td></tr>}
+                        {users.length === 0 && (
+                            <tr>
+                                <td colSpan={5} className="no-users">No users found.</td>
+                            </tr>
+                        )}
                         </tbody>
                     </table>
                     {totalPages > 1 && (
@@ -170,11 +159,7 @@ export default function UserManagement() {
                             {pages.map((p, idx) => p === '...' ? (
                                 <span key={idx} className="ellipsis">...</span>
                             ) : (
-                                <button
-                                    key={p}
-                                    className={currentPage === p ? 'active' : ''}
-                                    onClick={() => setCurrentPage(p)}
-                                >{p}</button>
+                                <button key={p} className={currentPage === p ? 'active' : ''} onClick={() => setCurrentPage(p)}>{p}</button>
                             ))}
                             <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(currentPage + 1)}>&gt;</button>
                         </div>
@@ -193,16 +178,6 @@ export default function UserManagement() {
                                 value={editUserData.email}
                                 onChange={e => setEditUserData({ ...editUserData, email: e.target.value })}
                             />
-                        </div>
-                        <div className="form-row">
-                            <label>Account Type</label>
-                            <select
-                                value={editUserData.accountType}
-                                onChange={e => setEditUserData({ ...editUserData, accountType: e.target.value })}
-                            >
-                                <option value="User">User</option>
-                                <option value="Guardian">Guardian</option>
-                            </select>
                         </div>
                         <div className="form-row">
                             <label>Premium?</label>
