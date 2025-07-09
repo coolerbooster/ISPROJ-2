@@ -65,7 +65,7 @@ export default function Dashboard() {
     const downloadReport = async (date) => {
         if (!date) return alert('Please select a date');
         try {
-            const token = localStorage.getItem('jwt_token');
+            const token = sessionStorage.getItem('jwt_token'); // ✅ FIXED: use sessionStorage
             const res = await fetch(`http://167.71.198.130:3001/api/admin/report?date=${date}`, {
                 method: 'GET',
                 headers: { Authorization: `Bearer ${token}` }
@@ -158,7 +158,6 @@ export default function Dashboard() {
                 </div>
 
                 <div className="table-section" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    {/* Left: User Table (limited to 3 users) */}
                     <div className="table-container" style={{ flexGrow: 1, maxWidth: '70%' }}>
                         <div className="table-header" style={{ display: 'flex', justifyContent: 'space-between' }}>
                             <h3>User Table</h3>
@@ -196,7 +195,6 @@ export default function Dashboard() {
                         </table>
                     </div>
 
-                    {/* Right: Report Generator */}
                     <div className="report-box" style={{ marginLeft: '20px' }}>
                         <h3>Generate Report</h3>
                         <input

@@ -16,7 +16,7 @@ export default function Login() {
             sessionStorage.setItem('jwt_token', res.token);
             router.push('/dashboard');
         } catch (err) {
-            setError(err.message);
+            setError(err.message || 'Login failed');
         }
     };
 
@@ -25,10 +25,10 @@ export default function Login() {
             const token = sessionStorage.getItem('jwt_token');
             if (token) {
                 try {
-                    await getUserProfile(); // checks token validity
+                    await getUserProfile();
                     router.replace('/dashboard');
                 } catch {
-                    localStorage.removeItem('jwt_token'); // token expired or invalid
+                    sessionStorage.removeItem('jwt_token');
                     setCheckingAuth(false);
                 }
             } else {
@@ -38,7 +38,9 @@ export default function Login() {
         checkToken();
     }, []);
 
-    if (checkingAuth) return null;
+    if (checkingAuth) {
+        return <div style={{ textAlign: 'center' }}>Checking session...</div>;
+    }
 
     return (
         <div className="login-container">
