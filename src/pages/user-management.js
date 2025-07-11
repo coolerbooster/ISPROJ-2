@@ -119,39 +119,37 @@ export default function UserManagement() {
     return (
         <>
             <Navbar />
-            <div className="user-container">
-                <h1 className="user-title">User Management</h1>
+            <div className="container py-4">
+                <h1 className="fw-bold mb-4">User Management</h1>
 
-                <div className="top-controls">
-                    <div className="entries-search-row">
-                        <div className="entries-label">
-                            Show{' '}
-                            <select
-                                className="entries-select"
-                                value={entriesPerPage}
-                                onChange={e => { setEntriesPerPage(+e.target.value); setCurrentPage(1); }}
-                            >
-                                <option value={10}>10</option>
-                                <option value={20}>20</option>
-                                <option value={30}>30</option>
-                            </select>{' '}
-                            entries
-                        </div>
-                        <div className="search-container">
-                            <label htmlFor="search">Search: </label>
-                            <input
-                                type="text"
-                                placeholder="by email"
-                                value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
-                            />
-                        </div>
+                <div className="d-flex flex-column flex-md-row justify-content-between align-items-center mb-3">
+                    <div>
+                        Show{' '}
+                        <select
+                            className="form-select d-inline-block w-auto"
+                            value={entriesPerPage}
+                            onChange={e => { setEntriesPerPage(+e.target.value); setCurrentPage(1); }}
+                        >
+                            <option value={10}>10</option>
+                            <option value={20}>20</option>
+                            <option value={30}>30</option>
+                        </select>{' '}
+                        entries
+                    </div>
+                    <div className="mt-2 mt-md-0">
+                        <input
+                            type="text"
+                            className="form-control"
+                            placeholder="Search by email"
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                        />
                     </div>
                 </div>
 
-                <div className="table-container">
-                    <table className="user-table">
-                        <thead>
+                <div className="table-responsive">
+                    <table className="table table-bordered table-hover text-center">
+                        <thead className="table-light">
                         <tr>
                             <th>ID</th>
                             <th>Email</th>
@@ -172,85 +170,96 @@ export default function UserManagement() {
                                 <td>{u.scanCount}</td>
                                 <td>{u.guardianModeAccess ?? u.guardianMode ? 'Yes' : 'No'}</td>
                                 <td>
-                                    <button className="view-btn" onClick={() => handleView(u)}>View</button>
-                                    <button className="edit-btn" onClick={() => handleEdit(u)}>Edit</button>
-                                    <button className="delete-btn" onClick={() => handleDelete(u.user_id)}>Delete</button>
+                                    <button className="btn btn-info btn-sm me-1" onClick={() => handleView(u)}>View</button>
+                                    <button className="btn btn-warning btn-sm me-1" onClick={() => handleEdit(u)}>Edit</button>
+                                    <button className="btn btn-danger btn-sm" onClick={() => handleDelete(u.user_id)}>Delete</button>
                                 </td>
                             </tr>
                         ))}
                         {users.length === 0 && (
                             <tr>
-                                <td colSpan={6} className="no-users">No users found.</td>
+                                <td colSpan={7} className="text-center">No users found.</td>
                             </tr>
                         )}
                         </tbody>
                     </table>
-
-                    {totalPages > 1 && (
-                        <div className="pagination">
-                            <button disabled={currentPage === 1} onClick={() => setCurrentPage(currentPage - 1)}>&lt;</button>
-                            {pages.map((p, idx) => (
-                                p === '...' ? (
-                                    <span key={idx} className="ellipsis">...</span>
-                                ) : (
-                                    <button
-                                        key={p}
-                                        className={currentPage === p ? 'active' : ''}
-                                        onClick={() => setCurrentPage(p)}
-                                    >{p}</button>
-                                )
-                            ))}
-                            <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(currentPage + 1)}>&gt;</button>
-                        </div>
-                    )}
                 </div>
+
+                {totalPages > 1 && (
+                    <div className="d-flex justify-content-center align-items-center mt-4 gap-2 flex-wrap">
+                        <button className="btn btn-outline-secondary btn-sm" disabled={currentPage === 1} onClick={() => setCurrentPage(currentPage - 1)}>&lt;</button>
+                        {pages.map((p, idx) => (
+                            p === '...' ? (
+                                <span key={idx} className="px-2">...</span>
+                            ) : (
+                                <button
+                                    key={p}
+                                    className={`btn btn-sm ${currentPage === p ? 'btn-primary' : 'btn-outline-primary'}`}
+                                    onClick={() => setCurrentPage(p)}
+                                >{p}</button>
+                            )
+                        ))}
+                        <button className="btn btn-outline-secondary btn-sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(currentPage + 1)}>&gt;</button>
+                    </div>
+                )}
             </div>
 
             {showEditModal && (
-                <div className="modal-overlay">
-                    <div className="modal-box">
-                        <h2>Edit User</h2>
-                        <div className="form-row">
-                            <label>Email</label>
-                            <input
-                                type="email"
-                                value={editUserData.email}
-                                onChange={e => setEditUserData({ ...editUserData, email: e.target.value })}
-                            />
-                        </div>
-                        <div className="form-row">
-                            <label>Account Type</label>
-                            <select
-                                value={editUserData.accountType}
-                                onChange={e => setEditUserData({ ...editUserData, accountType: e.target.value })}
-                            >
-                                <option value="User">User</option>
-                                <option value="Guardian">Guardian</option>
-                            </select>
-                        </div>
-                        <div className="form-row">
-                            <label>Premium?</label>
-                            <select
-                                value={editUserData.isPremiumUser ? 'Yes' : 'No'}
-                                onChange={e => setEditUserData({ ...editUserData, isPremiumUser: e.target.value === 'Yes' })}
-                            >
-                                <option value="No">No</option>
-                                <option value="Yes">Yes</option>
-                            </select>
-                        </div>
-                        <div className="form-row">
-                            <label>Password</label>
-                            <input
-                                type="password"
-                                value={editUserData.passwordEditable ? editUserData.password : '••••••••'}
-                                onFocus={() => !editUserData.passwordEditable && setEditUserData({ ...editUserData, passwordEditable: true, password: '' })}
-                                onChange={e => setEditUserData({ ...editUserData, password: e.target.value })}
-                                readOnly={!editUserData.passwordEditable}
-                            />
-                        </div>
-                        <div style={{ marginTop: '1rem', textAlign: 'right' }}>
-                            <button className="edit-btn" onClick={handleUpdate}>Save</button>
-                            <button className="delete-btn" onClick={() => setShowEditModal(false)}>Cancel</button>
+                <div className="modal fade show d-block" tabIndex="-1">
+                    <div className="modal-dialog">
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <h5 className="modal-title">Edit User</h5>
+                                <button type="button" className="btn-close" onClick={() => setShowEditModal(false)}></button>
+                            </div>
+                            <div className="modal-body">
+                                <div className="mb-3">
+                                    <label className="form-label">Email</label>
+                                    <input
+                                        type="email"
+                                        className="form-control"
+                                        value={editUserData.email}
+                                        onChange={e => setEditUserData({ ...editUserData, email: e.target.value })}
+                                    />
+                                </div>
+                                <div className="mb-3">
+                                    <label className="form-label">Account Type</label>
+                                    <select
+                                        className="form-select"
+                                        value={editUserData.accountType}
+                                        onChange={e => setEditUserData({ ...editUserData, accountType: e.target.value })}
+                                    >
+                                        <option value="User">User</option>
+                                        <option value="Guardian">Guardian</option>
+                                    </select>
+                                </div>
+                                <div className="mb-3">
+                                    <label className="form-label">Premium?</label>
+                                    <select
+                                        className="form-select"
+                                        value={editUserData.isPremiumUser ? 'Yes' : 'No'}
+                                        onChange={e => setEditUserData({ ...editUserData, isPremiumUser: e.target.value === 'Yes' })}
+                                    >
+                                        <option value="No">No</option>
+                                        <option value="Yes">Yes</option>
+                                    </select>
+                                </div>
+                                <div className="mb-3">
+                                    <label className="form-label">Password</label>
+                                    <input
+                                        type="password"
+                                        className="form-control"
+                                        value={editUserData.passwordEditable ? editUserData.password : '••••••••'}
+                                        onFocus={() => !editUserData.passwordEditable && setEditUserData({ ...editUserData, passwordEditable: true, password: '' })}
+                                        onChange={e => setEditUserData({ ...editUserData, password: e.target.value })}
+                                        readOnly={!editUserData.passwordEditable}
+                                    />
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button className="btn btn-primary" onClick={handleUpdate}>Save</button>
+                                <button className="btn btn-secondary" onClick={() => setShowEditModal(false)}>Cancel</button>
+                            </div>
                         </div>
                     </div>
                 </div>

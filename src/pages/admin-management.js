@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import Navbar from '../components/Navbar';
 import { useRouter } from 'next/router';
 import { AdminController } from '../controllers/AdminController';
@@ -9,6 +8,10 @@ export default function AdminManagement() {
     const [entries, setEntries] = useState(10);
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [newAdmin, setNewAdmin] = useState({ email: '', password: '', confirmPassword: '' });
+    const [passwordStrength, setPasswordStrength] = useState('');
+
     const router = useRouter();
 
     useEffect(() => {
@@ -31,16 +34,47 @@ export default function AdminManagement() {
         setCurrentPage(1);
     };
 
-    const handleDelete = async (id) => {
-        if (confirm('Are you sure you want to delete this admin?')) {
-            try {
-                await AdminController.deleteAdmin(id);
-                const updatedAdmins = await AdminController.getAdmins();
-                setAdmins(updatedAdmins);
-            } catch (err) {
-                console.error(err);
-                alert('Failed to delete admin.');
-            }
+    const getPasswordStrength = (password) => {
+        if (password.length < 8) return 'Weak';
+        const hasLetter = /[a-zA-Z]/.test(password);
+        const hasNumber = /[0-9]/.test(password);
+        const hasSymbol = /[^a-zA-Z0-9]/.test(password);
+        if (hasLetter && hasNumber && hasSymbol) return 'Strong';
+        if ((hasLetter && hasNumber) || (hasLetter && hasSymbol)) return 'Medium';
+        return 'Weak';
+    };
+
+    const handleAddAdmin = async () => {
+        const { email, password, confirmPassword } = newAdmin;
+
+        if (!email || !password || !confirmPassword) {
+            return alert('All fields are required.');
+        }
+
+        if (password !== confirmPassword) {
+            return alert('Passwords do not match.');
+        }
+
+        if (password.length < 8) {
+            return alert('Password must be at least 8 characters long.');
+        }
+
+        const hasLetter = /[a-zA-Z]/.test(password);
+        const hasNumberOrSymbol = /[0-9!@#$%^&*(),.?":{}|<>]/.test(password);
+
+        if (!hasLetter || !hasNumberOrSymbol) {
+            return alert('Password must include at least one letter and one number or special character.');
+        }
+
+        try {
+            await AdminController.createAdmin({ email, password });
+            setShowAddModal(false);
+            setNewAdmin({ email: '', password: '', confirmPassword: '' });
+            setPasswordStrength('');
+            const updatedAdmins = await AdminController.getAdmins();
+            setAdmins(updatedAdmins);
+        } catch (err) {
+            alert('Failed to create admin: ' + err.message);
         }
     };
 
@@ -55,18 +89,16 @@ export default function AdminManagement() {
     return (
         <>
             <Navbar />
-            <div className="admin-container">
-                <h1 className="user-title">Admin Accounts</h1>
+            <div className="container py-4">
+                <h1 className="mb-4 h4 text-center text-md-start">Admin Accounts</h1>
 
-                <div className="top-controls">
-                    <Link href="/add-admin-account" legacyBehavior>
-                        <a className="add-admin-btn">Add Admin</a>
-                    </Link>
-                    <div className="entries-search-row">
-                        <div className="entries-label">
-                            Show{' '}
+                <div className="d-flex flex-column flex-md-row justify-content-between align-items-start mb-3 gap-2">
+                    <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>Add Admin</button>
+                    <div className="d-flex flex-wrap gap-3">
+                        <div className="d-flex align-items-center">
+                            <label className="me-2">Show</label>
                             <select
-                                className="entries-select"
+                                className="form-select form-select-sm"
                                 value={entries}
                                 onChange={e => {
                                     setEntries(+e.target.value);
@@ -76,14 +108,15 @@ export default function AdminManagement() {
                                 <option value={10}>10</option>
                                 <option value={20}>20</option>
                                 <option value={30}>30</option>
-                            </select>{' '}
-                            entries
+                            </select>
+                            <span className="ms-2">entries</span>
                         </div>
-                        <div className="search-container">
-                            <label htmlFor="search">Search: </label>
+                        <div className="d-flex align-items-center">
+                            <label htmlFor="search" className="me-2">Search:</label>
                             <input
                                 id="search"
                                 type="text"
+                                className="form-control form-control-sm"
                                 placeholder="by email"
                                 value={searchTerm}
                                 onChange={handleSearch}
@@ -92,13 +125,12 @@ export default function AdminManagement() {
                     </div>
                 </div>
 
-                <div className="table-container">
-                    <table className="admin-table">
-                        <thead style={{ backgroundColor: '#d1d5db' }}>
+                <div className="table-responsive">
+                    <table className="table table-bordered text-center">
+                        <thead className="table-light">
                         <tr>
                             <th>#</th>
                             <th>Email</th>
-                            <th>Password</th>
                             <th>Actions</th>
                         </tr>
                         </thead>
@@ -107,12 +139,8 @@ export default function AdminManagement() {
                             <tr key={admin.id}>
                                 <td>{start + index + 1}</td>
                                 <td>{admin.email}</td>
-                                <td>••••••</td>
-                                <td className="action-buttons">
-                                    <button
-                                        className="delete-btn"
-                                        onClick={() => handleDelete(admin.id)}
-                                    >
+                                <td>
+                                    <button className="btn btn-sm btn-danger" onClick={() => handleDelete(admin.id)}>
                                         Delete
                                     </button>
                                 </td>
@@ -120,7 +148,7 @@ export default function AdminManagement() {
                         ))}
                         {paginatedAdmins.length === 0 && (
                             <tr>
-                                <td colSpan="4" className="no-admins">No admins found.</td>
+                                <td colSpan="3" className="text-muted">No admins found.</td>
                             </tr>
                         )}
                         </tbody>
@@ -128,21 +156,63 @@ export default function AdminManagement() {
                 </div>
 
                 {totalPages > 1 && (
-                    <div className="pagination">
-                        <button disabled={currentPage === 1} onClick={() => setCurrentPage(currentPage - 1)}>&lt;</button>
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                            <button
-                                key={page}
-                                className={page === currentPage ? 'active' : ''}
-                                onClick={() => setCurrentPage(page)}
-                            >
-                                {page}
-                            </button>
-                        ))}
-                        <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(currentPage + 1)}>&gt;</button>
-                    </div>
+                    <nav className="d-flex justify-content-center mt-3">
+                        <ul className="pagination pagination-sm">
+                            <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                                <button className="page-link" onClick={() => setCurrentPage(currentPage - 1)}>&lt;</button>
+                            </li>
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                <li key={page} className={`page-item ${page === currentPage ? 'active' : ''}`}>
+                                    <button className="page-link" onClick={() => setCurrentPage(page)}>{page}</button>
+                                </li>
+                            ))}
+                            <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+                                <button className="page-link" onClick={() => setCurrentPage(currentPage + 1)}>&gt;</button>
+                            </li>
+                        </ul>
+                    </nav>
                 )}
             </div>
+
+            {/* Add Admin Modal */}
+            {showAddModal && (
+                <div className="modal-overlay">
+                    <div className="modal-box" style={{ maxWidth: '90%', width: '500px' }}>
+                        <h2 className="h5 mb-3">Add Admin</h2>
+                        <div className="mb-3">
+                            <label className="form-label">Email</label>
+                            <input
+                                type="email"
+                                className="form-control"
+                                value={newAdmin.email}
+                                onChange={e => setNewAdmin({ ...newAdmin, email: e.target.value })}
+                            />
+                        </div>
+                        <div className="mb-3">
+                            <label className="form-label">Password</label>
+                            <input
+                                type="password"
+                                className="form-control"
+                                value={newAdmin.password}
+                                onChange={e => setNewAdmin({ ...newAdmin, password: e.target.value })}
+                            />
+                        </div>
+                        <div className="mb-4">
+                            <label className="form-label">Confirm Password</label>
+                            <input
+                                type="password"
+                                className="form-control"
+                                value={newAdmin.confirmPassword}
+                                onChange={e => setNewAdmin({ ...newAdmin, confirmPassword: e.target.value })}
+                            />
+                        </div>
+                        <div className="d-flex justify-content-end gap-2">
+                            <button className="btn btn-success" onClick={handleAddAdmin}>Create</button>
+                            <button className="btn btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 }

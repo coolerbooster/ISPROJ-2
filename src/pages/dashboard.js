@@ -153,7 +153,18 @@ export default function Dashboard() {
         }
     }
 
-    if (isLoading) return null;
+    if (isLoading) {
+        return (
+            <div className="dashboard-container">
+                <Navbar />
+                <div className="d-flex justify-content-center align-items-center" style={{ height: '70vh' }}>
+                    <div className="spinner-border text-primary" role="status" style={{ width: '3rem', height: '3rem' }}>
+                        <span className="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     const pieData = [
         { name: 'Free Users', value: userStats.free },
@@ -164,120 +175,136 @@ export default function Dashboard() {
     return (
         <div className="dashboard-container">
             <Navbar />
-            <div className="dashboard-content">
-                <div className="dashboard-header">
-                    <h1>ADMIN DASHBOARD</h1>
+            <div className="container py-4">
+                <div className="text-center text-md-start mb-4">
+                    <h1 className="fw-bold">ADMIN DASHBOARD</h1>
                 </div>
 
-                <div className="stats-container">
-                    <div className="stat-card green">
-                        <div className="stat-number">{onlineCount}</div>
-                        <div className="stat-label">Online Users</div>
-                    </div>
-                    <div className="stat-card blue">
-                        <div className="stat-number">{userStats.total}</div>
-                        <div className="stat-label">Total Users</div>
-                    </div>
-                    <div className="stat-card orange">
-                        <div className="stat-number">{userStats.free}</div>
-                        <div className="stat-label">Free Users</div>
-                    </div>
-                    <div className="stat-card yellow">
-                        <div className="stat-number">{userStats.premium}</div>
-                        <div className="stat-label">Premium Users</div>
-                    </div>
-                </div>
-
-                <div className="charts-grid">
-                    <div className="chart-card">
-                        <h3>New Signups (Last 7 Days)</h3>
-                        <ResponsiveContainer width="100%" height={250}>
-                            <BarChart data={signupData}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="date" />
-                                <YAxis />
-                                <Tooltip />
-                                <Bar dataKey="users" fill="#8884d8" />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-
-                    <div className="chart-card">
-                        <h3>User Distribution</h3>
-                        <ResponsiveContainer width="100%" height={250}>
-                            <PieChart>
-                                <Pie
-                                    data={pieData}
-                                    cx="50%" cy="50%"
-                                    outerRadius={80}
-                                    dataKey="value"
-                                    label={({ name, value }) => `${name} (${value})`}
-                                >
-                                    {pieData.map((_, i) => (
-                                        <Cell key={i} fill={COLORS[i]} />
-                                    ))}
-                                </Pie>
-                                <Tooltip />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                <div className="table-section" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div className="table-container" style={{ flexGrow: 1, maxWidth: '70%' }}>
-                        <div className="table-header" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <h3>User Table</h3>
-                            <span
-                                className="expand-text"
-                                onClick={() => router.push('/user-management')}
-                                style={{ cursor: 'pointer', color: '#007bff', fontWeight: 'bold' }}
-                            >
-                                Click to Expand &gt;
-                            </span>
+                <div className="row g-3 mb-4">
+                    <div className="col-6 col-md-3">
+                        <div className="stat-card green text-center">
+                            <div className="stat-number">{onlineCount}</div>
+                            <div className="stat-label">Online Users</div>
                         </div>
-                        <table className="user-table">
-                            <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Email</th>
-                                <th>Account Type</th>
-                                <th>Subscription</th>
-                                <th>Scan Count</th>
-                                <th>Guardian Access</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            {users.slice(0, 3).map(u => (
-                                <tr key={u.user_id}>
-                                    <td>{u.user_id}</td>
-                                    <td>{u.email}</td>
-                                    <td>{u.userType}</td>
-                                    <td>{u.subscriptionType}</td>
-                                    <td>{u.scanCount}</td>
-                                    <td>{u.guardianModeAccess ?? u.guardianMode ? 'Yes' : 'No'}</td>
+                    </div>
+                    <div className="col-6 col-md-3">
+                        <div className="stat-card blue text-center">
+                            <div className="stat-number">{userStats.total}</div>
+                            <div className="stat-label">Total Users</div>
+                        </div>
+                    </div>
+                    <div className="col-6 col-md-3">
+                        <div className="stat-card orange text-center">
+                            <div className="stat-number">{userStats.free}</div>
+                            <div className="stat-label">Free Users</div>
+                        </div>
+                    </div>
+                    <div className="col-6 col-md-3">
+                        <div className="stat-card yellow text-center">
+                            <div className="stat-number">{userStats.premium}</div>
+                            <div className="stat-label">Premium Users</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="row g-4 mb-4">
+                    <div className="col-md-6">
+                        <div className="chart-card">
+                            <h3 className="h5 text-center text-md-start">New Signups (Last 7 Days)</h3>
+                            <ResponsiveContainer width="100%" height={250}>
+                                <BarChart data={signupData}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="date" />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Bar dataKey="users" fill="#8884d8" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                    <div className="col-md-6">
+                        <div className="chart-card">
+                            <h3 className="h5 text-center text-md-start">User Distribution</h3>
+                            <ResponsiveContainer width="100%" height={250}>
+                                <PieChart>
+                                    <Pie
+                                        data={pieData}
+                                        cx="50%"
+                                        cy="50%"
+                                        outerRadius={80}
+                                        dataKey="value"
+                                        label={({ name, value }) => `${name} (${value})`}
+                                    >
+                                        {pieData.map((_, i) => (
+                                            <Cell key={i} fill={COLORS[i]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="row g-4">
+                    <div className="col-lg-8">
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                            <h3 className="h5">User Table</h3>
+                            <span
+                                className="text-primary fw-semibold"
+                                style={{ cursor: 'pointer' }}
+                                onClick={() => router.push('/user-management')}
+                            >
+                            Click to Expand &gt;
+                        </span>
+                        </div>
+                        <div className="table-responsive">
+                            <table className="table table-bordered table-hover text-center">
+                                <thead className="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Email</th>
+                                    <th>Account Type</th>
+                                    <th>Subscription</th>
+                                    <th>Scan Count</th>
+                                    <th>Guardian Access</th>
                                 </tr>
-                            ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                {users.slice(0, 3).map(u => (
+                                    <tr key={u.user_id}>
+                                        <td>{u.user_id}</td>
+                                        <td>{u.email}</td>
+                                        <td>{u.userType}</td>
+                                        <td>{u.subscriptionType}</td>
+                                        <td>{u.scanCount}</td>
+                                        <td>{u.guardianModeAccess ?? u.guardianMode ? 'Yes' : 'No'}</td>
+                                    </tr>
+                                ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
-                    <div className="report-box">
-                        <h3>Generate Report</h3>
-                        <input
-                            type="date"
-                            id="report-date"
-                            max={new Date().toISOString().split('T')[0]}
-                            style={{ padding: '8px', marginBottom: '10px', display: 'block' }}
-                        />
-                        <button
-                            className="generate-report-button"
-                            onClick={() => {
-                                const date = document.getElementById('report-date').value;
-                                downloadReport(date);
-                            }}
-                        >
-                            Generate Report
-                        </button>
+                    <div className="col-lg-4">
+                        <div className="p-3 border rounded shadow-sm">
+                            <h3 className="h5 mb-3">Generate Report</h3>
+                            <input
+                                type="date"
+                                id="report-date"
+                                className="form-control mb-3"
+                                max={new Date().toISOString().split('T')[0]}
+                            />
+                            <button
+                                className="btn btn-success w-100"
+                                onClick={() => {
+                                    const date = document.getElementById('report-date').value;
+                                    downloadReport(date);
+                                }}
+                            >
+                                Generate Report
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

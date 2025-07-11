@@ -146,3 +146,20 @@
     border-color: #3b82f6;
 }
 
+.modal-box {
+    background: white;
+    padding: 2rem;
+    border-radius: 0.5rem;
+    max-width: 600px;
+    width: 100%;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.modal-box input {
+    font-size: 1rem;
+    padding: 8px;
+    width: 100%;
+}
+
+
+
