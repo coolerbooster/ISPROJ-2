@@ -161,21 +161,30 @@ export default function UserManagement() {
                         </tr>
                         </thead>
                         <tbody>
-                        {users.map(u => (
-                            <tr key={u.user_id}>
-                                <td>{u.user_id}</td>
-                                <td>{u.email}</td>
-                                <td>{u.userType}</td>
-                                <td>{u.subscriptionType === 'Premium' ? 'Yes' : 'No'}</td>
-                                <td>{u.scanCount}</td>
-                                <td>{u.guardianModeAccess ?? u.guardianMode ? 'Yes' : 'No'}</td>
-                                <td>
-                                    <button className="btn btn-info btn-sm me-1" onClick={() => handleView(u)}>View</button>
-                                    <button className="btn btn-warning btn-sm me-1" onClick={() => handleEdit(u)}>Edit</button>
-                                    <button className="btn btn-danger btn-sm" onClick={() => handleDelete(u.user_id)}>Delete</button>
-                                </td>
-                            </tr>
-                        ))}
+                        {users.map(u => {
+                            // only Premium users can have guardian access
+                            const guardianAccess =
+                                u.subscriptionType === 'Premium' &&
+                                (u.guardianModeAccess ?? u.guardianMode)
+                                    ? 'Yes'
+                                    : 'No';
+
+                            return (
+                                <tr key={u.user_id}>
+                                    <td>{u.user_id}</td>
+                                    <td>{u.email}</td>
+                                    <td>{u.userType}</td>
+                                    <td>{u.subscriptionType === 'Premium' ? 'Yes' : 'No'}</td>
+                                    <td>{u.scanCount}</td>
+                                    <td>{guardianAccess}</td>
+                                    <td>
+                                        <button className="btn btn-info btn-sm me-1" onClick={() => handleView(u)}>View</button>
+                                        <button className="btn btn-warning btn-sm me-1" onClick={() => handleEdit(u)}>Edit</button>
+                                        <button className="btn btn-danger btn-sm" onClick={() => handleDelete(u.user_id)}>Delete</button>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                         {users.length === 0 && (
                             <tr>
                                 <td colSpan={7} className="text-center">No users found.</td>
