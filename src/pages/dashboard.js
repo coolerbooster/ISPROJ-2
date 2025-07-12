@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { getAdminDashboard, listUsersAdmin, getUserScansAdmin } from '../services/apiService';
+import { getAdminDashboard, listUsersAdmin, getUserScansAdmin, generateReport } from '../services/apiService';
 import Navbar from '../components/Navbar';
 import { AuthController } from '../controllers/AuthController';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
     PieChart, Pie, Cell, ResponsiveContainer
 } from 'recharts';
+import * as XLSX from 'xlsx';
 
 const COLORS = ['#f97316', '#3b82f6', '#22c55e'];
 
@@ -85,73 +86,83 @@ export default function Dashboard() {
         fetchData();
     }, []);
 
+    // Top-level helper (outside of the component)
     async function downloadReport(date) {
         if (!date) {
             alert('Please select a date');
             return;
         }
+
         try {
-            const token = localStorage.getItem('jwt_token');
-            const res = await fetch(`http://167.71.198.130:3001/api/admin/report?date=${date}`, {
-                method: 'GET',
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (!res.ok) throw new Error('Failed to fetch report');
-            const data = await res.json();
-            const rawUsers = data?.data?.users || [];
-
-            const users = rawUsers.filter(u => u.userType?.toLowerCase() !== 'admin');
-
-            const summary = {
-                premiumUsers: 0,
-                freeUsers: 0,
-                guardians: 0,
-                totalScans: 0
-            };
-
-            users.forEach(u => {
-                if (u.subscriptionType === 'Premium') summary.premiumUsers++;
-                if (u.subscriptionType === 'Free') summary.freeUsers++;
-                if (u.userType?.toLowerCase() === 'guardian') summary.guardians++;
-                summary.totalScans += u.scanCount;
-            });
-
-            const headers = ['User ID', 'Email', 'Account Type', 'Subscription', 'Scan Count', 'Guardian Access'];
-            const rows = users.map(u => [
-                u.user_id,
-                u.email,
-                u.userType,
-                u.subscriptionType,
-                u.scanCount,
-                u.guardianModeAccess
+            // 1) fetch dashboard + per-date users
+            const [dashResp, reportData] = await Promise.all([
+                getAdminDashboard(),
+                generateReport(date),
             ]);
+            const dash     = dashResp.data ?? dashResp;
+            const usersRaw = reportData.users ?? [];
 
-            const summaryRows = [
-                [],
-                ['SUMMARY'],
-                ['Premium Users', summary.premiumUsers],
-                ['Free Users', summary.freeUsers],
-                ['Guardians', summary.guardians],
-                ['Total Scans', summary.totalScans]
+            // 2) compute metrics
+            const generatedAt  = new Date().toLocaleString();
+            const reportFor    = reportData.date;
+            const onlineUsers  = String(dash.onlineUsers  ?? 0);
+            const totalUsers   = String(usersRaw.length);
+            const freeUsers    = String(usersRaw.filter(u => u.subscriptionType === 'Free').length);
+            const premiumUsers = String(usersRaw.filter(u => u.subscriptionType === 'Premium').length);
+
+            // 3) build array-of-arrays, casting every “number” to a string
+            const aoa = [
+                ['Report Generated At', generatedAt],
+                ['Report For Date',     reportFor],
+                ['Online Users',        onlineUsers],
+                ['Total Users',         totalUsers],
+                ['Free Users',          freeUsers],
+                ['Premium Users',       premiumUsers],
+                [],  // blank row
+                // header row (all strings)
+                ['user_id','email','userType','subscriptionType','scanCount','guardianModeAccess'],
+                // data rows (user_id & scanCount as strings)
+                ...usersRaw.map(u => [
+                    String(u.user_id),
+                    u.email,
+                    u.userType,
+                    u.subscriptionType,
+                    String(u.scanCount),
+                    u.guardianModeAccess,
+                ]),
             ];
 
-            const csvContent = [headers, ...rows, ...summaryRows]
-                .map(row => row.map(value => `"${value}"`).join(','))
-                .join('\n');
+            // 4) convert to sheet & style bold labels + header
+            const sheet = XLSX.utils.aoa_to_sheet(aoa);
+            // bold A1–A6
+            ['A1','A2','A3','A4','A5','A6'].forEach(addr => {
+                if (sheet[addr]) sheet[addr].s = { font: { bold: true } };
+            });
+            // bold headers at row 8 (A8–F8)
+            ['A8','B8','C8','D8','E8','F8'].forEach(addr => {
+                if (sheet[addr]) {
+                    sheet[addr].s = sheet[addr].s || {};
+                    sheet[addr].s.font = { ...(sheet[addr].s.font || {}), bold: true };
+                }
+            });
 
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            link.setAttribute('href', url);
-            link.setAttribute('download', `Admin_Report_${date}.csv`);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            // 5) column widths
+            sheet['!cols'] = [
+                { wch:20 }, { wch:30 }, { wch:15 },
+                { wch:20 }, { wch:10 }, { wch:20 },
+            ];
+
+            // 6) assemble & download (with styles)
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, sheet, 'Report');
+            XLSX.writeFile(wb, `Admin_Report_${date}.xlsx`, { cellStyles: true });
+
         } catch (err) {
-            alert(err.message);
+            console.error('Report generation failed:', err);
+            alert(err.message || 'Error generating report');
         }
     }
+
 
     if (isLoading) {
         return (
