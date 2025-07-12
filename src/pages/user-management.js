@@ -178,7 +178,6 @@ export default function UserManagement() {
                                     <td>{u.scanCount}</td>
                                     <td>{guardianAccess}</td>
                                     <td>
-                                        <button className="btn btn-info btn-sm me-1" onClick={() => handleView(u)}>View</button>
                                         <button className="btn btn-warning btn-sm me-1" onClick={() => handleEdit(u)}>Edit</button>
                                         <button className="btn btn-danger btn-sm" onClick={() => handleDelete(u.user_id)}>Delete</button>
                                     </td>
