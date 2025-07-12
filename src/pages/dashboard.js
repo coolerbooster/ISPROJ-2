@@ -266,32 +266,45 @@ export default function Dashboard() {
                                 style={{ cursor: 'pointer' }}
                                 onClick={() => router.push('/user-management')}
                             >
-                            Click to Expand &gt;
-                        </span>
+            Click to Expand &gt;
+        </span>
                         </div>
                         <div className="table-responsive">
                             <table className="table table-bordered table-hover text-center">
                                 <thead className="table-light">
                                 <tr>
-                                    <th>#</th>
+                                    <th>ID</th>
                                     <th>Email</th>
                                     <th>Account Type</th>
-                                    <th>Subscription</th>
+                                    <th>Premium</th>
                                     <th>Scan Count</th>
-                                    <th>Guardian Access</th>
+                                    <th>Guardian Mode</th>
                                 </tr>
                                 </thead>
                                 <tbody>
-                                {users.slice(0, 3).map(u => (
-                                    <tr key={u.user_id}>
-                                        <td>{u.user_id}</td>
-                                        <td>{u.email}</td>
-                                        <td>{u.userType}</td>
-                                        <td>{u.subscriptionType}</td>
-                                        <td>{u.scanCount}</td>
-                                        <td>{u.guardianModeAccess ?? u.guardianMode ? 'Yes' : 'No'}</td>
+                                {users.slice(0, 3).map(u => {
+                                    const guardianAccess =
+                                        u.subscriptionType === 'Premium' &&
+                                        (u.guardianModeAccess ?? u.guardianMode)
+                                            ? 'Yes'
+                                            : 'No';
+
+                                    return (
+                                        <tr key={u.user_id}>
+                                            <td>{u.user_id}</td>
+                                            <td>{u.email}</td>
+                                            <td>{u.userType}</td>
+                                            <td>{u.subscriptionType === 'Premium' ? 'Yes' : 'No'}</td>
+                                            <td>{u.scanCount}</td>
+                                            <td>{guardianAccess}</td>
+                                        </tr>
+                                    );
+                                })}
+                                {users.length === 0 && (
+                                    <tr>
+                                        <td colSpan={6} className="text-center">No users found.</td>
                                     </tr>
-                                ))}
+                                )}
                                 </tbody>
                             </table>
                         </div>

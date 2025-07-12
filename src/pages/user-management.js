@@ -156,7 +156,7 @@ export default function UserManagement() {
                             <th>Account Type</th>
                             <th>Premium</th>
                             <th>Scan Count</th>
-                            <th>Guardian Access</th>
+                            <th>Guardian Mode</th>
                             <th>Actions</th>
                         </tr>
                         </thead>
