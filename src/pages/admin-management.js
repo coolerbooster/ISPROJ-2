@@ -34,15 +34,6 @@ export default function AdminManagement() {
         setCurrentPage(1);
     };
 
-    const getPasswordStrength = (password) => {
-        if (password.length < 8) return 'Weak';
-        const hasLetter = /[a-zA-Z]/.test(password);
-        const hasNumber = /[0-9]/.test(password);
-        const hasSymbol = /[^a-zA-Z0-9]/.test(password);
-        if (hasLetter && hasNumber && hasSymbol) return 'Strong';
-        if ((hasLetter && hasNumber) || (hasLetter && hasSymbol)) return 'Medium';
-        return 'Weak';
-    };
 
     const handleAddAdmin = async () => {
         const { email, password, confirmPassword } = newAdmin;
@@ -85,6 +76,19 @@ export default function AdminManagement() {
     const totalPages = Math.ceil(filtered.length / entries);
     const start = (currentPage - 1) * entries;
     const paginatedAdmins = filtered.slice(start, start + entries);
+
+    const handleDelete = async (id) => {
+        if (!confirm('Are you sure you want to delete this admin?')) return;
+
+        try {
+            await AdminController.deleteAdmin(id);
+            const updatedAdmins = await AdminController.getAdmins();
+            setAdmins(updatedAdmins);
+        } catch (err) {
+            console.error('❌ Failed to delete admin:', err);
+            alert('Failed to delete admin.');
+        }
+    };
 
     return (
         <>

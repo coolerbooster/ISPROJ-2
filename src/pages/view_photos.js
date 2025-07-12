@@ -85,7 +85,6 @@ export default function ViewPhotos() {
                         <tr>
                             <th>Name</th>
                             <th>Type</th>
-                            <th>Image</th>
                             <th>Action</th>
                         </tr>
                         </thead>
@@ -94,17 +93,6 @@ export default function ViewPhotos() {
                             <tr key={scan.scanId}>
                                 <td>{scan.name || '(Untitled)'}</td>
                                 <td>{scan.type}</td>
-                                <td>
-                                    {scan.imageUrl ? (
-                                        <img
-                                            src={scan.imageUrl}
-                                            alt="Scan"
-                                            className="img-thumbnail"
-                                            style={{ width: '60px', height: '60px', cursor: 'pointer' }}
-                                            onClick={() => window.open(scan.imageUrl, '_blank')}
-                                        />
-                                    ) : 'No image'}
-                                </td>
                                 <td>
                                     <button className="btn btn-sm btn-primary me-2" onClick={() => openEditModal(scan)}>Edit</button>
                                     <button className="btn btn-sm btn-danger" onClick={() => handleDelete(scan.scanId)}>Delete</button>
@@ -146,16 +134,6 @@ export default function ViewPhotos() {
                                 <option value="Text">Text</option>
                                 <option value="Object">Object</option>
                             </select>
-                        </div>
-
-                        <div className="mb-3">
-                            <label className="form-label">Text</label>
-                            <textarea
-                                className="form-control"
-                                rows={3}
-                                value={editForm.text}
-                                onChange={(e) => setEditForm({ ...editForm, text: e.target.value })}
-                            />
                         </div>
 
                         <div className="d-flex justify-content-between">
