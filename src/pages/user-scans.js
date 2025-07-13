@@ -40,6 +40,16 @@ export default function UserScans() {
         }
     };
 
+    const handleViewImage = (scanId) => {
+        alert(`This would open the image viewer for scan #${scanId}`);
+        // Replace this with actual viewer or modal logic
+    };
+
+    const isNonImageScan = (type) => {
+        const nonImageTypes = ["ocr", "text"];
+        return nonImageTypes.includes(type?.toLowerCase());
+    };
+
     return (
         <>
             <Navbar />
@@ -51,7 +61,7 @@ export default function UserScans() {
                     <h2 className="mb-0">
                         Scans for: <strong>{email}</strong>
                     </h2>
-                    <div /> {/* Just a spacer for symmetry */}
+                    <div />
                 </div>
 
                 {loading ? (
@@ -80,6 +90,14 @@ export default function UserScans() {
                                     <td>{scan.type || "N/A"}</td>
                                     <td>{new Date(scan.createdAt).toLocaleString()}</td>
                                     <td>
+                                        {!isNonImageScan(scan.type) && (
+                                            <button
+                                                className="btn btn-info btn-sm me-2"
+                                                onClick={() => handleViewImage(scan.scanId)}
+                                            >
+                                                View Image
+                                            </button>
+                                        )}
                                         <button
                                             className="btn btn-danger btn-sm"
                                             onClick={() => handleDeleteScan(scan.scanId)}
