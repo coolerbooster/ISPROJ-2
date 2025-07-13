@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { getAdminDashboard, listUsersAdmin, getUserScansAdmin, generateReport } from '../services/apiService';
+import { getAdminDashboard, listUsersAdmin, generateReport } from '../services/apiService';
 import Navbar from '../components/Navbar';
 import { AuthController } from '../controllers/AuthController';
 import {
@@ -56,15 +56,11 @@ export default function Dashboard() {
                 const all = listRes.users || [];
                 const nonAdmin = all.filter(u => u.userType?.toLowerCase() !== 'admin');
 
-                const enriched = await Promise.all(
-                    nonAdmin.map(async u => {
-                        const scansRes = await getUserScansAdmin(u.user_id);
-                        const count = Array.isArray(scansRes)
-                            ? scansRes.length
-                            : (Array.isArray(scansRes.scans) ? scansRes.scans.length : 0);
-                        return { ...u, scanCount: count };
-                    })
-                );
+                // Just attach scanCount placeholder (no fetching)
+                const enriched = nonAdmin.map(u => ({
+                    ...u,
+                    scanCount: 0 // will only be fetched if user clicks View Scans
+                }));
 
                 const totalUsers = enriched.length;
                 const guardians = enriched.filter(u => u.userType?.toLowerCase() === 'guardian').length;
@@ -86,7 +82,6 @@ export default function Dashboard() {
         fetchData();
     }, []);
 
-    // Top-level helper (outside of the component)
     async function downloadReport(date) {
         if (!date) {
             alert('Please select a date');
@@ -94,65 +89,55 @@ export default function Dashboard() {
         }
 
         try {
-            // 1) fetch dashboard + per-date users
             const [dashResp, reportData] = await Promise.all([
                 getAdminDashboard(),
                 generateReport(date),
             ]);
-            const dash     = dashResp.data ?? dashResp;
+            const dash = dashResp.data ?? dashResp;
             const usersRaw = reportData.users ?? [];
 
-            // 2) compute metrics
-            const generatedAt  = new Date().toLocaleString();
-            const reportFor    = reportData.date;
-            const onlineUsers  = String(dash.onlineUsers  ?? 0);
-            const totalUsers   = String(usersRaw.length);
-            const freeUsers    = String(usersRaw.filter(u => u.subscriptionType === 'Free').length);
+            const generatedAt = new Date().toLocaleString();
+            const reportFor = reportData.date;
+            const onlineUsers = String(dash.onlineUsers ?? 0);
+            const totalUsers = String(usersRaw.length);
+            const freeUsers = String(usersRaw.filter(u => u.subscriptionType === 'Free').length);
             const premiumUsers = String(usersRaw.filter(u => u.subscriptionType === 'Premium').length);
 
-            // 3) build array-of-arrays, casting every “number” to a string
             const aoa = [
                 ['Report Generated At', generatedAt],
-                ['Report For Date',     reportFor],
-                ['Online Users',        onlineUsers],
-                ['Total Users',         totalUsers],
-                ['Free Users',          freeUsers],
-                ['Premium Users',       premiumUsers],
-                [],  // blank row
-                // header row (all strings)
-                ['user_id','email','userType','subscriptionType','scanCount','guardianModeAccess'],
-                // data rows (user_id & scanCount as strings)
+                ['Report For Date', reportFor],
+                ['Online Users', onlineUsers],
+                ['Total Users', totalUsers],
+                ['Free Users', freeUsers],
+                ['Premium Users', premiumUsers],
+                [],
+                ['user_id', 'email', 'userType', 'subscriptionType', 'scanCount', 'guardianModeAccess'],
                 ...usersRaw.map(u => [
                     String(u.user_id),
                     u.email,
                     u.userType,
                     u.subscriptionType,
-                    String(u.scanCount),
+                    String(u.scanCount ?? 0),
                     u.guardianModeAccess,
                 ]),
             ];
 
-            // 4) convert to sheet & style bold labels + header
             const sheet = XLSX.utils.aoa_to_sheet(aoa);
-            // bold A1–A6
-            ['A1','A2','A3','A4','A5','A6'].forEach(addr => {
+            ['A1', 'A2', 'A3', 'A4', 'A5', 'A6'].forEach(addr => {
                 if (sheet[addr]) sheet[addr].s = { font: { bold: true } };
             });
-            // bold headers at row 8 (A8–F8)
-            ['A8','B8','C8','D8','E8','F8'].forEach(addr => {
+            ['A8', 'B8', 'C8', 'D8', 'E8', 'F8'].forEach(addr => {
                 if (sheet[addr]) {
                     sheet[addr].s = sheet[addr].s || {};
                     sheet[addr].s.font = { ...(sheet[addr].s.font || {}), bold: true };
                 }
             });
 
-            // 5) column widths
             sheet['!cols'] = [
-                { wch:20 }, { wch:30 }, { wch:15 },
-                { wch:20 }, { wch:10 }, { wch:20 },
+                { wch: 20 }, { wch: 30 }, { wch: 15 },
+                { wch: 20 }, { wch: 10 }, { wch: 20 },
             ];
 
-            // 6) assemble & download (with styles)
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, sheet, 'Report');
             XLSX.writeFile(wb, `Admin_Report_${date}.xlsx`, { cellStyles: true });
@@ -162,7 +147,6 @@ export default function Dashboard() {
             alert(err.message || 'Error generating report');
         }
     }
-
 
     if (isLoading) {
         return (
@@ -266,8 +250,8 @@ export default function Dashboard() {
                                 style={{ cursor: 'pointer' }}
                                 onClick={() => router.push('/user-management')}
                             >
-            Click to Expand &gt;
-        </span>
+                                Click to Expand &gt;
+                            </span>
                         </div>
                         <div className="table-responsive">
                             <table className="table table-bordered table-hover text-center">

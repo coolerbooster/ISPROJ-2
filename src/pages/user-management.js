@@ -4,8 +4,7 @@ import { useRouter } from "next/router";
 import {
     listUsersAdmin,
     deleteUserAdmin,
-    updateUserAdmin,
-    getUserScansAdmin
+    updateUserAdmin
 } from "../services/apiService";
 
 export default function UserManagement() {
@@ -41,18 +40,13 @@ export default function UserManagement() {
         try {
             const res = await listUsersAdmin(1, 1000, searchTerm);
             const nonAdmin = (res.users || []).filter(u => u.userType?.toLowerCase() !== "admin");
-            const enriched = await Promise.all(
-                nonAdmin.map(async user => {
-                    const scansRes = await getUserScansAdmin(user.user_id);
-                    const count = Array.isArray(scansRes)
-                        ? scansRes.length
-                        : Array.isArray(scansRes.scans)
-                            ? scansRes.scans.length
-                            : 0;
-                    return { ...user, scanCount: count };
-                })
-            );
-            setAllUsers(enriched);
+
+            const basicUsers = nonAdmin.map(user => ({
+                ...user,
+                scanCount: 0
+            }));
+
+            setAllUsers(basicUsers);
             setCurrentPage(1);
         } catch (err) {
             console.error("Failed to fetch users", err);
@@ -60,7 +54,7 @@ export default function UserManagement() {
     }
 
     function handleView(user) {
-        router.push(`/view_photos?id=${user.user_id}&email=${encodeURIComponent(user.email)}`);
+        router.push(`/user-scans?id=${user.user_id}&email=${encodeURIComponent(user.email)}`);
     }
 
     function handleEdit(user) {
@@ -124,16 +118,19 @@ export default function UserManagement() {
 
                 <div className="d-flex flex-column flex-md-row justify-content-between align-items-center mb-3">
                     <div>
-                        Show{' '}
+                        Show{" "}
                         <select
                             className="form-select d-inline-block w-auto"
                             value={entriesPerPage}
-                            onChange={e => { setEntriesPerPage(+e.target.value); setCurrentPage(1); }}
+                            onChange={(e) => {
+                                setEntriesPerPage(+e.target.value);
+                                setCurrentPage(1);
+                            }}
                         >
                             <option value={10}>10</option>
                             <option value={20}>20</option>
                             <option value={30}>30</option>
-                        </select>{' '}
+                        </select>{" "}
                         entries
                     </div>
                     <div className="mt-2 mt-md-0">
@@ -142,7 +139,7 @@ export default function UserManagement() {
                             className="form-control"
                             placeholder="Search by email"
                             value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
+                            onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
                 </div>
@@ -156,37 +153,41 @@ export default function UserManagement() {
                             <th>Account Type</th>
                             <th>Premium</th>
                             <th>Scan Count</th>
-                            <th>Guardian Mode</th>
+                            <th>Guardian Access</th>
                             <th>Actions</th>
                         </tr>
                         </thead>
                         <tbody>
-                        {users.map(u => {
-                            // only Premium users can have guardian access
+                        {users.map((u) => {
                             const guardianAccess =
-                                u.subscriptionType === 'Premium' &&
+                                u.subscriptionType === "Premium" &&
                                 (u.guardianModeAccess ?? u.guardianMode)
-                                    ? 'Yes'
-                                    : 'No';
+                                    ? "Yes"
+                                    : "No";
 
                             return (
                                 <tr key={u.user_id}>
                                     <td>{u.user_id}</td>
                                     <td>{u.email}</td>
                                     <td>{u.userType}</td>
-                                    <td>{u.subscriptionType === 'Premium' ? 'Yes' : 'No'}</td>
+                                    <td>{u.subscriptionType === "Premium" ? "Yes" : "No"}</td>
                                     <td>{u.scanCount}</td>
                                     <td>{guardianAccess}</td>
                                     <td>
-                                        <button className="btn btn-warning btn-sm me-1" onClick={() => handleEdit(u)}>Edit</button>
-                                        <button className="btn btn-danger btn-sm" onClick={() => handleDelete(u.user_id)}>Delete</button>
+                                        <div className="d-flex justify-content-center gap-1">
+                                            <button className="btn btn-info btn-sm" onClick={() => handleView(u)}>View</button>
+                                            <button className="btn btn-warning btn-sm" onClick={() => handleEdit(u)}>Edit</button>
+                                            <button className="btn btn-danger btn-sm" onClick={() => handleDelete(u.user_id)}>Delete</button>
+                                        </div>
                                     </td>
                                 </tr>
                             );
                         })}
                         {users.length === 0 && (
                             <tr>
-                                <td colSpan={7} className="text-center">No users found.</td>
+                                <td colSpan={7} className="text-center">
+                                    No users found.
+                                </td>
                             </tr>
                         )}
                         </tbody>
@@ -195,19 +196,35 @@ export default function UserManagement() {
 
                 {totalPages > 1 && (
                     <div className="d-flex justify-content-center align-items-center mt-4 gap-2 flex-wrap">
-                        <button className="btn btn-outline-secondary btn-sm" disabled={currentPage === 1} onClick={() => setCurrentPage(currentPage - 1)}>&lt;</button>
-                        {pages.map((p, idx) => (
-                            p === '...' ? (
-                                <span key={idx} className="px-2">...</span>
+                        <button
+                            className="btn btn-outline-secondary btn-sm"
+                            disabled={currentPage === 1}
+                            onClick={() => setCurrentPage(currentPage - 1)}
+                        >
+                            &lt;
+                        </button>
+                        {pages.map((p, idx) =>
+                            p === "..." ? (
+                                <span key={idx} className="px-2">
+                                    ...
+                                </span>
                             ) : (
                                 <button
                                     key={p}
-                                    className={`btn btn-sm ${currentPage === p ? 'btn-primary' : 'btn-outline-primary'}`}
+                                    className={`btn btn-sm ${currentPage === p ? "btn-primary" : "btn-outline-primary"}`}
                                     onClick={() => setCurrentPage(p)}
-                                >{p}</button>
+                                >
+                                    {p}
+                                </button>
                             )
-                        ))}
-                        <button className="btn btn-outline-secondary btn-sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(currentPage + 1)}>&gt;</button>
+                        )}
+                        <button
+                            className="btn btn-outline-secondary btn-sm"
+                            disabled={currentPage === totalPages}
+                            onClick={() => setCurrentPage(currentPage + 1)}
+                        >
+                            &gt;
+                        </button>
                     </div>
                 )}
             </div>
@@ -218,7 +235,11 @@ export default function UserManagement() {
                         <div className="modal-content">
                             <div className="modal-header">
                                 <h5 className="modal-title">Edit User</h5>
-                                <button type="button" className="btn-close" onClick={() => setShowEditModal(false)}></button>
+                                <button
+                                    type="button"
+                                    className="btn-close"
+                                    onClick={() => setShowEditModal(false)}
+                                ></button>
                             </div>
                             <div className="modal-body">
                                 <div className="mb-3">
@@ -227,7 +248,9 @@ export default function UserManagement() {
                                         type="email"
                                         className="form-control"
                                         value={editUserData.email}
-                                        onChange={e => setEditUserData({ ...editUserData, email: e.target.value })}
+                                        onChange={(e) =>
+                                            setEditUserData({ ...editUserData, email: e.target.value })
+                                        }
                                     />
                                 </div>
                                 <div className="mb-3">
@@ -235,7 +258,9 @@ export default function UserManagement() {
                                     <select
                                         className="form-select"
                                         value={editUserData.accountType}
-                                        onChange={e => setEditUserData({ ...editUserData, accountType: e.target.value })}
+                                        onChange={(e) =>
+                                            setEditUserData({ ...editUserData, accountType: e.target.value })
+                                        }
                                     >
                                         <option value="User">User</option>
                                         <option value="Guardian">Guardian</option>
@@ -245,8 +270,13 @@ export default function UserManagement() {
                                     <label className="form-label">Premium?</label>
                                     <select
                                         className="form-select"
-                                        value={editUserData.isPremiumUser ? 'Yes' : 'No'}
-                                        onChange={e => setEditUserData({ ...editUserData, isPremiumUser: e.target.value === 'Yes' })}
+                                        value={editUserData.isPremiumUser ? "Yes" : "No"}
+                                        onChange={(e) =>
+                                            setEditUserData({
+                                                ...editUserData,
+                                                isPremiumUser: e.target.value === "Yes",
+                                            })
+                                        }
                                     >
                                         <option value="No">No</option>
                                         <option value="Yes">Yes</option>
@@ -257,16 +287,36 @@ export default function UserManagement() {
                                     <input
                                         type="password"
                                         className="form-control"
-                                        value={editUserData.passwordEditable ? editUserData.password : '••••••••'}
-                                        onFocus={() => !editUserData.passwordEditable && setEditUserData({ ...editUserData, passwordEditable: true, password: '' })}
-                                        onChange={e => setEditUserData({ ...editUserData, password: e.target.value })}
+                                        value={
+                                            editUserData.passwordEditable
+                                                ? editUserData.password
+                                                : "••••••••"
+                                        }
+                                        onFocus={() =>
+                                            !editUserData.passwordEditable &&
+                                            setEditUserData({
+                                                ...editUserData,
+                                                passwordEditable: true,
+                                                password: "",
+                                            })
+                                        }
+                                        onChange={(e) =>
+                                            setEditUserData({ ...editUserData, password: e.target.value })
+                                        }
                                         readOnly={!editUserData.passwordEditable}
                                     />
                                 </div>
                             </div>
                             <div className="modal-footer">
-                                <button className="btn btn-primary" onClick={handleUpdate}>Save</button>
-                                <button className="btn btn-secondary" onClick={() => setShowEditModal(false)}>Cancel</button>
+                                <button className="btn btn-primary" onClick={handleUpdate}>
+                                    Save
+                                </button>
+                                <button
+                                    className="btn btn-secondary"
+                                    onClick={() => setShowEditModal(false)}
+                                >
+                                    Cancel
+                                </button>
                             </div>
                         </div>
                     </div>
