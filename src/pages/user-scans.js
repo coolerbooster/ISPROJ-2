@@ -8,31 +8,30 @@ export default function UserScans() {
     const { id, email } = router.query;
 
     const [scans, setScans] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [selectedImage, setSelectedImage] = useState(null);
 
-    useEffect(() => {
+    const fetchScans = async () => {
         if (!id) return;
+        setLoading(true);
+        try {
+            const res = await getUserScansAdmin(id);
+            const scanList = Array.isArray(res.data) ? res.data : res;
+            setScans(scanList);
+            console.log("Fetched scans:", scanList);
+        } catch (err) {
+            console.error("Failed to fetch scans:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-        const fetchScans = async () => {
-            try {
-                const res = await getUserScansAdmin(id);
-                const scanList = Array.isArray(res.data) ? res.data : res;
-                setScans(scanList);
-                console.log("Fetched scans:", scanList);
-            } catch (err) {
-                console.error("Failed to fetch scans:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchScans();
+    useEffect(() => {
+        if (id) fetchScans();
     }, [id]);
 
     const handleDeleteScan = async (scanId) => {
         if (!confirm("Are you sure you want to delete this scan?")) return;
-
         try {
             await deleteScanAdmin(scanId);
             setScans((prev) => prev.filter((s) => s.scanId !== scanId && s.conversationId !== scanId));
@@ -46,9 +45,7 @@ export default function UserScans() {
         setSelectedImage(base64);
     };
 
-    const closeModal = () => {
-        setSelectedImage(null);
-    };
+    const closeModal = () => setSelectedImage(null);
 
     const isNonImageScan = (type) => {
         const nonImageTypes = ["ocr", "text"];
@@ -90,13 +87,10 @@ export default function UserScans() {
                             {scans.map((scan, idx) => {
                                 const isLLM = scan.type?.toLowerCase() === "llm";
                                 const scanId = scan.scanId || scan.conversationId || idx;
-
                                 return (
                                     <tr key={scanId}>
                                         <td>{scanId}</td>
-                                        <td>
-                                            {scan.name || scan.first_user_message?.slice(0, 30) || "N/A"}
-                                        </td>
+                                        <td>{scan.name || scan.first_user_message?.slice(0, 30) || "N/A"}</td>
                                         <td>{scan.text || scan.first_assistant_message?.slice(0, 30) || "N/A"}</td>
                                         <td>{scan.type || "N/A"}</td>
                                         <td>{new Date(scan.createdAt).toLocaleString()}</td>
@@ -111,7 +105,6 @@ export default function UserScans() {
                                             ) : (
                                                 <span className="text-muted me-2">No image</span>
                                             )}
-
                                             <button
                                                 className="btn btn-danger btn-sm"
                                                 onClick={() => handleDeleteScan(scan.scanId || scan.conversationId)}
