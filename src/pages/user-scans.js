@@ -9,6 +9,7 @@ export default function UserScans() {
 
     const [scans, setScans] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [selectedImage, setSelectedImage] = useState(null);
 
     useEffect(() => {
         if (!id) return;
@@ -18,6 +19,7 @@ export default function UserScans() {
                 const res = await getUserScansAdmin(id);
                 const scanList = Array.isArray(res.data) ? res.data : res;
                 setScans(scanList);
+                console.log("Fetched scans:", scanList);
             } catch (err) {
                 console.error("Failed to fetch scans:", err);
             } finally {
@@ -33,16 +35,19 @@ export default function UserScans() {
 
         try {
             await deleteScanAdmin(scanId);
-            setScans((prev) => prev.filter((s) => s.scanId !== scanId));
+            setScans((prev) => prev.filter((s) => s.scanId !== scanId && s.conversationId !== scanId));
         } catch (err) {
             console.error("Failed to delete scan:", err);
             alert("Error deleting scan.");
         }
     };
 
-    const handleViewImage = (scanId) => {
-        alert(`This would open the image viewer for scan #${scanId}`);
-        // Replace this with actual viewer or modal logic
+    const handleViewImage = (base64) => {
+        setSelectedImage(base64);
+    };
+
+    const closeModal = () => {
+        setSelectedImage(null);
     };
 
     const isNonImageScan = (type) => {
@@ -73,8 +78,8 @@ export default function UserScans() {
                         <table className="table table-bordered text-center">
                             <thead className="table-light">
                             <tr>
-                                <th>Scan ID</th>
-                                <th>Name</th>
+                                <th>ID</th>
+                                <th>Name / Message</th>
                                 <th>Text</th>
                                 <th>Type</th>
                                 <th>Date</th>
@@ -82,33 +87,68 @@ export default function UserScans() {
                             </tr>
                             </thead>
                             <tbody>
-                            {scans.map((scan) => (
-                                <tr key={scan.scanId}>
-                                    <td>{scan.scanId}</td>
-                                    <td>{scan.name || "N/A"}</td>
-                                    <td>{scan.text || "N/A"}</td>
-                                    <td>{scan.type || "N/A"}</td>
-                                    <td>{new Date(scan.createdAt).toLocaleString()}</td>
-                                    <td>
-                                        {!isNonImageScan(scan.type) && (
+                            {scans.map((scan, idx) => {
+                                const isLLM = scan.type?.toLowerCase() === "llm";
+                                const scanId = scan.scanId || scan.conversationId || idx;
+
+                                return (
+                                    <tr key={scanId}>
+                                        <td>{scanId}</td>
+                                        <td>
+                                            {scan.name || scan.first_user_message?.slice(0, 30) || "N/A"}
+                                        </td>
+                                        <td>{scan.text || scan.first_assistant_message?.slice(0, 30) || "N/A"}</td>
+                                        <td>{scan.type || "N/A"}</td>
+                                        <td>{new Date(scan.createdAt).toLocaleString()}</td>
+                                        <td>
+                                            {!isNonImageScan(scan.type) && (scan.image || scan.images) ? (
+                                                <button
+                                                    className="btn btn-info btn-sm me-2"
+                                                    onClick={() => handleViewImage(scan.image || scan.images)}
+                                                >
+                                                    View Image
+                                                </button>
+                                            ) : (
+                                                <span className="text-muted me-2">No image</span>
+                                            )}
+
                                             <button
-                                                className="btn btn-info btn-sm me-2"
-                                                onClick={() => handleViewImage(scan.scanId)}
+                                                className="btn btn-danger btn-sm"
+                                                onClick={() => handleDeleteScan(scan.scanId || scan.conversationId)}
                                             >
-                                                View Image
+                                                Delete
                                             </button>
-                                        )}
-                                        <button
-                                            className="btn btn-danger btn-sm"
-                                            onClick={() => handleDeleteScan(scan.scanId)}
-                                        >
-                                            Delete
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                             </tbody>
                         </table>
+                    </div>
+                )}
+
+                {selectedImage && (
+                    <div
+                        className="modal show d-block"
+                        tabIndex="-1"
+                        role="dialog"
+                        style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
+                    >
+                        <div className="modal-dialog modal-lg" role="document">
+                            <div className="modal-content">
+                                <div className="modal-header">
+                                    <h5 className="modal-title">Scanned Image</h5>
+                                    <button type="button" className="btn-close" onClick={closeModal}></button>
+                                </div>
+                                <div className="modal-body text-center">
+                                    <img
+                                        src={`data:image/png;base64,${selectedImage}`}
+                                        alt="Scanned"
+                                        style={{ maxWidth: "100%", height: "auto" }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>
