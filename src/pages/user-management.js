@@ -4,8 +4,10 @@ import { useRouter } from "next/router";
 import {
     listUsersAdmin,
     deleteUserAdmin,
-    updateUserAdmin
+    updateUserAdmin,
+    getUserScansAdmin
 } from "../services/apiService";
+
 
 export default function UserManagement() {
     const [allUsers, setAllUsers] = useState([]);
@@ -41,12 +43,35 @@ export default function UserManagement() {
             const res = await listUsersAdmin(1, 1000, searchTerm);
             const nonAdmin = (res.users || []).filter(u => u.userType?.toLowerCase() !== "admin");
 
-            const basicUsers = nonAdmin.map(user => ({
-                ...user,
-                scanCount: 0
-            }));
+            const usersWithScanCount = await Promise.all(
+                nonAdmin.map(async user => {
+                    try {
+                        const result = await getUserScansAdmin(user.user_id);
+                        console.log(`🟢 SCAN RESPONSE for user ${user.email}:`, result);
 
-            setAllUsers(basicUsers);
+                        const scans = Array.isArray(result.scans)
+                            ? result.scans
+                            : Array.isArray(result)
+                                ? result
+                                : [];
+
+                        console.log(`✅ Final scan count for ${user.email}:`, scans.length);
+
+                        return {
+                            ...user,
+                            scanCount: scans.length
+                        };
+                    } catch (err) {
+                        console.warn(`🔴 Error getting scans for ${user.email}`, err);
+                        return {
+                            ...user,
+                            scanCount: 0
+                        };
+                    }
+                })
+            );
+
+            setAllUsers(usersWithScanCount);
             setCurrentPage(1);
         } catch (err) {
             console.error("Failed to fetch users", err);
