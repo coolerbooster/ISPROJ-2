@@ -44,9 +44,15 @@ export default function UserScans() {
         <>
             <Navbar />
             <div className="container py-4">
-                <h2 className="mb-3">
-                    Scans for: <strong>{email}</strong>
-                </h2>
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                    <button className="btn btn-outline-primary" onClick={() => router.push("/user-management")}>
+                        ← Back
+                    </button>
+                    <h2 className="mb-0">
+                        Scans for: <strong>{email}</strong>
+                    </h2>
+                    <div /> {/* Just a spacer for symmetry */}
+                </div>
 
                 {loading ? (
                     <p>Loading scans...</p>
