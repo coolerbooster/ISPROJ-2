@@ -13,7 +13,7 @@ export default function Login() {
         e.preventDefault();
         try {
             const res = await login(email, password);
-            localStorage.setItem('jwt_token', res.token); // 👈 changed
+            localStorage.setItem('jwt_token', res.token);
             router.push('/dashboard');
         } catch (err) {
             setError(err.message || 'Login failed');
@@ -22,13 +22,13 @@ export default function Login() {
 
     useEffect(() => {
         const checkToken = async () => {
-            const token = localStorage.getItem('jwt_token'); // 👈 changed
+            const token = localStorage.getItem('jwt_token');
             if (token) {
                 try {
                     await getUserProfile();
                     router.replace('/dashboard');
                 } catch {
-                    localStorage.removeItem('jwt_token'); // 👈 changed
+                    localStorage.removeItem('jwt_token');
                     setCheckingAuth(false);
                 }
             } else {
@@ -39,39 +39,45 @@ export default function Login() {
     }, []);
 
     if (checkingAuth) {
-        return <div style={{ textAlign: 'center' }}>Checking session...</div>;
+        return <div className="text-center py-5">Checking session...</div>;
     }
 
     return (
-        <div className="login-container">
-            <h1 style={{ marginBottom: '20px', textAlign: 'center' }}>Admin Login</h1>
-            <form onSubmit={handleSubmit} className="login-form">
-                <div className="form-group">
-                    <label htmlFor="email">Email</label>
-                    <input
-                        type="text"
-                        id="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                    />
+        <div className="container d-flex justify-content-center align-items-center" style={{ minHeight: '100vh' }}>
+            <div className="card p-4 shadow-sm" style={{ maxWidth: '400px', width: '100%' }}>
+                <h2 className="text-center mb-4">Admin Login</h2>
+                <form onSubmit={handleSubmit}>
+                    <div className="mb-3">
+                        <label htmlFor="email" className="form-label">Email</label>
+                        <input
+                            type="email"
+                            className="form-control"
+                            id="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                        />
+                    </div>
+                    <div className="mb-3">
+                        <label htmlFor="password" className="form-label">Password</label>
+                        <input
+                            type="password"
+                            className="form-control"
+                            id="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                        />
+                    </div>
+                    {error && <div className="alert alert-danger py-1">{error}</div>}
+                    <div className="d-grid">
+                        <button type="submit" className="btn btn-primary">Login</button>
+                    </div>
+                </form>
+                <div className="text-center mt-3">
+                    <a href="/Forgot-Password" className="text-decoration-none">Forgot Password?</a>
                 </div>
-                <div className="form-group">
-                    <label htmlFor="password">Password</label>
-                    <input
-                        type="password"
-                        id="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                    />
-                </div>
-                <button type="submit">Login</button>
-                {error && <p className="error-message">{error}</p>}
-            </form>
-            <p style={{ textAlign: 'center', marginTop: '10px' }}>
-                <a href="/Forgot-Password">Forgot Password?</a>
-            </p>
+            </div>
         </div>
     );
 }

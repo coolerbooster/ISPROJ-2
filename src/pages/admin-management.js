@@ -212,7 +212,16 @@ export default function AdminManagement() {
                         </div>
                         <div className="d-flex justify-content-end gap-2">
                             <button className="btn btn-success" onClick={handleAddAdmin}>Create</button>
-                            <button className="btn btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
+                            <button
+                                className="btn btn-secondary"
+                                onClick={() => {
+                                    setNewAdmin({ email: '', password: '', confirmPassword: '' });
+                                    setPasswordStrength('');
+                                    setShowAddModal(false);
+                                }}
+                            >
+                                Cancel
+                            </button>
                         </div>
                     </div>
                 </div>

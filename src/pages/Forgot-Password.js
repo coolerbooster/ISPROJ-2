@@ -15,7 +15,6 @@ export default function ForgotPassword() {
 
         try {
             await forgotPassword(email);
-            // redirect to the reset-password page, carrying the email in the query
             router.push({
                 pathname: '/Reset-Password',
                 query: { email },
@@ -26,26 +25,33 @@ export default function ForgotPassword() {
     };
 
     return (
-        <div className="login-container">
-            <h2>Forgot Password</h2>
-            <form onSubmit={handleSubmit} className="login-form">
-                <label htmlFor="email">Email:</label>
-                <input
-                    id="email"
-                    type="email"
-                    required
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                />
+        <div className="container d-flex justify-content-center align-items-center" style={{ minHeight: '100vh' }}>
+            <div className="card p-4 shadow-sm" style={{ maxWidth: '400px', width: '100%' }}>
+                <h2 className="text-center mb-4">Forgot Password</h2>
+                <form onSubmit={handleSubmit}>
+                    <div className="mb-3">
+                        <label htmlFor="email" className="form-label">Email</label>
+                        <input
+                            id="email"
+                            type="email"
+                            className="form-control"
+                            required
+                            value={email}
+                            onChange={e => setEmail(e.target.value)}
+                        />
+                    </div>
 
-                <button type="submit">Send Reset Code</button>
+                    {error && <div className="alert alert-danger py-1">{error}</div>}
 
-                {error && (
-                    <p style={{ marginTop: '10px', color: 'red' }}>
-                        {error}
-                    </p>
-                )}
-            </form>
+                    <div className="d-grid">
+                        <button type="submit" className="btn btn-primary">Send Reset Code</button>
+                    </div>
+                </form>
+
+                <div className="text-center mt-3">
+                    <a href="/" className="text-decoration-none">Back to Login</a>
+                </div>
+            </div>
         </div>
     );
 }

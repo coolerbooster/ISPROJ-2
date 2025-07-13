@@ -1,5 +1,3 @@
-// pages/reset-password.js
-
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Navbar from "../components/Navbar";
@@ -12,18 +10,48 @@ export default function ResetPasswordPage() {
     const [email, setEmail] = useState(queryEmail || "");
     const [codeValue, setCodeValue] = useState("");
     const [newPassword, setNewPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
     const [error, setError] = useState("");
 
     useEffect(() => {
         if (queryEmail) setEmail(queryEmail);
     }, [queryEmail]);
 
+    const validatePassword = () => {
+        if (!newPassword || !confirmPassword) {
+            setError("All fields are required.");
+            return false;
+        }
+
+        if (newPassword !== confirmPassword) {
+            setError("Passwords do not match.");
+            return false;
+        }
+
+        if (newPassword.length < 8) {
+            setError("Password must be at least 8 characters long.");
+            return false;
+        }
+
+        const hasLetter = /[a-zA-Z]/.test(newPassword);
+        const hasNumberOrSymbol = /[0-9!@#$%^&*(),.?":{}|<>]/.test(newPassword);
+
+        if (!hasLetter || !hasNumberOrSymbol) {
+            setError("Password must include at least one letter and one number or special character.");
+            return false;
+        }
+
+        return true;
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError("");
+
+        if (!validatePassword()) return;
+
         try {
             await resetPassword(email, codeValue, newPassword);
-            // go back to the index page
             router.push("/");
         } catch (err) {
             setError(err.message || "Failed to reset password.");
@@ -33,78 +61,61 @@ export default function ResetPasswordPage() {
     return (
         <>
             <Navbar />
-            <div className="login-container">
-                <h2>Enter Reset Code</h2>
-                <p>Code sent to: <strong>{email}</strong></p>
-                <form onSubmit={handleSubmit} className="login-form">
-                    <label htmlFor="code">Reset Code:</label>
-                    <input
-                        id="code"
-                        type="text"
-                        required
-                        value={codeValue}
-                        onChange={e => setCodeValue(e.target.value)}
-                    />
+            <div className="container d-flex justify-content-center align-items-center" style={{ minHeight: '100vh' }}>
+                <div className="card shadow-sm p-4" style={{ maxWidth: '400px', width: '100%' }}>
+                    <h2 className="text-center mb-3">Reset Password</h2>
+                    <p className="text-center text-muted mb-4">
+                        Code sent to: <strong>{email}</strong>
+                    </p>
+                    <form onSubmit={handleSubmit}>
+                        <div className="mb-3">
+                            <label htmlFor="code" className="form-label">Reset Code</label>
+                            <input
+                                id="code"
+                                type="text"
+                                className="form-control"
+                                required
+                                value={codeValue}
+                                onChange={e => setCodeValue(e.target.value)}
+                            />
+                        </div>
 
-                    <label htmlFor="new-password">New Password:</label>
-                    <input
-                        id="new-password"
-                        type="password"
-                        required
-                        value={newPassword}
-                        onChange={e => setNewPassword(e.target.value)}
-                    />
+                        <div className="mb-3">
+                            <label htmlFor="new-password" className="form-label">New Password</label>
+                            <input
+                                id="new-password"
+                                type="password"
+                                className="form-control"
+                                required
+                                value={newPassword}
+                                onChange={e => setNewPassword(e.target.value)}
+                            />
+                        </div>
 
-                    <button type="submit">Submit</button>
-                    {error && <p className="error">{error}</p>}
-                </form>
+                        <div className="mb-3">
+                            <label htmlFor="confirm-password" className="form-label">Confirm Password</label>
+                            <input
+                                id="confirm-password"
+                                type="password"
+                                className="form-control"
+                                required
+                                value={confirmPassword}
+                                onChange={e => setConfirmPassword(e.target.value)}
+                            />
+                        </div>
+
+                        {error && <div className="alert alert-danger py-2">{error}</div>}
+
+                        <div className="d-grid">
+                            <button type="submit" className="btn btn-primary">Submit</button>
+                        </div>
+                    </form>
+
+                    <div className="text-center mt-3">
+                        <a href="/" className="text-decoration-none">Back to Login</a>
+                    </div>
+                </div>
             </div>
-
-            <style jsx>{`
-        .login-container {
-          max-width: 400px;
-          margin: 60px auto;
-          padding: 24px;
-          background: #fff;
-          border-radius: 8px;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-        h2 {
-          margin-bottom: 16px;
-          text-align: center;
-        }
-        .login-form {
-          display: flex;
-          flex-direction: column;
-        }
-        label {
-          margin: 8px 0 4px;
-          font-weight: 500;
-        }
-        input {
-          padding: 8px;
-          border: 1px solid #ccc;
-          border-radius: 4px;
-        }
-        button {
-          margin-top: 16px;
-          padding: 10px;
-          background: #0070f3;
-          color: #fff;
-          font-weight: 600;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-        }
-        button:hover {
-          background: #005bb5;
-        }
-        .error {
-          margin-top: 12px;
-          color: #d00;
-          font-size: 0.9em;
-        }
-      `}</style>
         </>
     );
 }

@@ -41,12 +41,26 @@ export default function UserManagement() {
             const res = await listUsersAdmin(1, 1000, searchTerm);
             const nonAdmin = (res.users || []).filter(u => u.userType?.toLowerCase() !== "admin");
 
-            const basicUsers = nonAdmin.map(user => ({
-                ...user,
-                scanCount: 0
-            }));
+            // Fetch scan counts in parallel
+            const usersWithScanCounts = await Promise.all(
+                nonAdmin.map(async (user) => {
+                    try {
+                        const scansRes = await getUserScansAdmin(user.user_id);
+                        return {
+                            ...user,
+                            scanCount: (scansRes?.scans || []).length
+                        };
+                    } catch (err) {
+                        console.error(`Failed to get scans for user ${user.user_id}`, err);
+                        return {
+                            ...user,
+                            scanCount: 0
+                        };
+                    }
+                })
+            );
 
-            setAllUsers(basicUsers);
+            setAllUsers(usersWithScanCounts);
             setCurrentPage(1);
         } catch (err) {
             console.error("Failed to fetch users", err);
@@ -175,7 +189,13 @@ export default function UserManagement() {
                                     <td>{guardianAccess}</td>
                                     <td>
                                         <div className="d-flex justify-content-center gap-1">
-                                            <button className="btn btn-info btn-sm" onClick={() => handleView(u)}>View</button>
+                                            <button
+                                                className={`btn btn-sm ${u.userType === 'Guardian' ? 'btn-secondary disabled' : 'btn-info'}`}
+                                                disabled={u.userType === 'Guardian'}
+                                                onClick={() => handleView(u)}
+                                            >
+                                                View
+                                            </button>
                                             <button className="btn btn-warning btn-sm" onClick={() => handleEdit(u)}>Edit</button>
                                             <button className="btn btn-danger btn-sm" onClick={() => handleDelete(u.user_id)}>Delete</button>
                                         </div>
