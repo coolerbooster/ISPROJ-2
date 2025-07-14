@@ -7,6 +7,8 @@ import {
 } from "../services/apiService";
 import Navbar from "../components/Navbar";
 
+const BASE_URL = "http://167.71.198.130:3001"; // Update if needed
+
 export default function UserScans() {
     const router = useRouter();
     const { id, email } = router.query;
@@ -16,6 +18,10 @@ export default function UserScans() {
     const [selectedImage, setSelectedImage] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const entriesPerPage = 10;
+
+    const [showModal, setShowModal] = useState(false);
+    const [conversationMessages, setConversationMessages] = useState([]);
+    const [loadingMessages, setLoadingMessages] = useState(false);
 
     useEffect(() => {
         if (id) fetchScans();
@@ -62,11 +68,32 @@ export default function UserScans() {
         }
     };
 
-    const closeModal = () => setSelectedImage(null);
+    const closeModal = () => {
+        setSelectedImage(null);
+        setShowModal(false);
+    };
 
     const isNonImageScan = (type) => {
         const nonImageTypes = ["ocr", "text"];
         return nonImageTypes.includes(type?.toLowerCase());
+    };
+
+    const handleViewConversation = async (conversationId) => {
+        setShowModal(true);
+        setLoadingMessages(true);
+        try {
+            const res = await fetch(`${BASE_URL}/api/admin/conversations/${conversationId}/history`, {
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${localStorage.getItem("jwt_token")}`,
+                },
+            });
+            const data = await res.json();
+            setConversationMessages(data.messages || []);
+        } catch (err) {
+            console.error("Failed to load conversation:", err);
+        }
+        setLoadingMessages(false);
     };
 
     const paginatedScans = scans.slice(
@@ -112,8 +139,7 @@ export default function UserScans() {
                                 </thead>
                                 <tbody>
                                 {paginatedScans.map((scan, idx) => {
-                                    const scanId =
-                                        scan.scanId || scan.conversationId || idx;
+                                    const scanId = scan.scanId || scan.conversationId || idx;
                                     return (
                                         <tr key={scanId}>
                                             <td>{scanId}</td>
@@ -137,20 +163,27 @@ export default function UserScans() {
                                                         <button
                                                             className="btn btn-info btn-sm me-2"
                                                             onClick={() =>
-                                                                fetchImageAndShow(
-                                                                    scan.conversationId
-                                                                )
+                                                                fetchImageAndShow(scan.conversationId)
                                                             }
                                                         >
                                                             View Image
                                                         </button>
                                                     )}
+                                                {scan.type?.toLowerCase() === "llm" && (
+                                                    <button
+                                                        className="btn btn-secondary btn-sm me-2"
+                                                        onClick={() =>
+                                                            handleViewConversation(scan.conversationId)
+                                                        }
+                                                    >
+                                                        View Message
+                                                    </button>
+                                                )}
                                                 <button
                                                     className="btn btn-danger btn-sm"
                                                     onClick={() =>
                                                         handleDeleteScan(
-                                                            scan.scanId ||
-                                                            scan.conversationId
+                                                            scan.scanId || scan.conversationId
                                                         )
                                                     }
                                                 >
@@ -198,6 +231,7 @@ export default function UserScans() {
                     </>
                 )}
 
+                {/* View Image Modal */}
                 {selectedImage && (
                     <div
                         className="modal show d-block"
@@ -221,6 +255,64 @@ export default function UserScans() {
                                         alt="Scanned"
                                         style={{ maxWidth: "100%", height: "auto" }}
                                     />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Chat Modal for View Message */}
+                {showModal && (
+                    <div
+                        className="modal show d-block"
+                        tabIndex="-1"
+                        role="dialog"
+                        style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
+                    >
+                        <div className="modal-dialog modal-md" role="document">
+                            <div className="modal-content">
+                                <div className="modal-header">
+                                    <h5 className="modal-title">Guardian Chat</h5>
+                                    <button
+                                        type="button"
+                                        className="btn-close"
+                                        onClick={closeModal}
+                                    ></button>
+                                </div>
+                                <div className="modal-body" style={{ maxHeight: "70vh", overflowY: "auto" }}>
+                                    {loadingMessages ? (
+                                        <p>Loading conversation...</p>
+                                    ) : (
+                                        <div className="d-flex flex-column gap-3">
+                                            {conversationMessages.map((msg, i) => {
+                                                const isUser = msg.role === "user";
+                                                return (
+                                                    <div
+                                                        key={i}
+                                                        className={`d-flex flex-column align-self-${isUser ? "start" : "end"}`}
+                                                    >
+                                                        <div
+                                                            className={`p-2 rounded ${
+                                                                isUser
+                                                                    ? "bg-light text-dark"
+                                                                    : "bg-success text-white"
+                                                            }`}
+                                                            style={{
+                                                                maxWidth: "80%",
+                                                                wordBreak: "break-word",
+                                                            }}
+                                                        >
+                                                            <strong>{isUser ? "Guardian" : "JuanEye AI"}</strong>
+                                                            <div>{msg.content}</div>
+                                                        </div>
+                                                        <small className="text-muted mt-1" style={{ fontSize: "0.75rem" }}>
+                                                            {new Date(msg.createdAt).toLocaleString()}
+                                                        </small>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
