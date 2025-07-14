@@ -1,4 +1,3 @@
-
 const BASE_URL = 'http://167.71.198.130:3001';
 const LS_KEY = 'jwt_token';
 
@@ -67,8 +66,6 @@ export function deleteScan(scanId) {
     return request('DELETE', `/api/user/scans/${scanId}`, null, true);
 }
 
-
-
 // Guardian
 export function bindRequest(userEmail) {
     return request('POST', '/api/user/guardian/bind-request', { email: userEmail }, true);
@@ -88,9 +85,8 @@ export function getAdminDashboard() {
     return request('GET', '/api/admin/dashboard', null, true);
 }
 export function createUserAsAdmin(email, password, accountType, isPremiumUser, scanCount) {
-    return request('POST', '/api/admin/users', {email, password, accountType, isPremiumUser, scanCount}, true);
+    return request('POST', '/api/admin/users', { email, password, accountType, isPremiumUser, scanCount }, true);
 }
-// ensure search defaults to '' and only append when non-empty
 export function listUsersAdmin(page, limit, search = '') {
     let path = `/api/admin/users?page=${page}&limit=${limit}`;
     if (search.trim()) {
@@ -121,4 +117,22 @@ export function deleteScanAdmin(scanId) {
 }
 export function generateReport(date) {
     return request('GET', `/api/admin/report?date=${date}`, null, true);
+}
+
+// ✅ FIXED: Admin Image Fetch
+export async function getImageByConversationId(conversationId) {
+    const res = await fetch(`${BASE_URL}/api/admin/scans/${conversationId}/images`, {
+        method: 'GET',
+        headers: headers(true)
+    });
+
+    if (!res.ok) {
+        throw new Error(`Failed to fetch image: HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    console.log("🌐 Raw image response from API:", data);
+
+    const base64 = data.image || data.base64 || data.data || data.images; // <- added `data.images`
+    return { image: base64 };
 }
