@@ -61,6 +61,30 @@ export default function UserManagement() {
         }
     }
 
+    async function fetchUsersWithoutReset() {
+        try {
+            const res = await listUsersAdmin(1, 1000, searchTerm);
+            const nonAdmin = (res.users || []).filter(u => u.userType?.toLowerCase() !== "admin");
+
+            const enrichedUsers = await Promise.all(
+                nonAdmin.map(async user => {
+                    try {
+                        const scans = await getUserScansAdmin(user.user_id);
+                        return { ...user, scanCount: scans.length };
+                    } catch (err) {
+                        console.error(`Error getting scans for ${user.email}`, err);
+                        return { ...user, scanCount: 0 };
+                    }
+                })
+            );
+
+            setAllUsers(enrichedUsers);
+            // Do not reset currentPage
+        } catch (err) {
+            console.error("Failed to fetch users", err);
+        }
+    }
+
     function handleView(user) {
         router.push(`/user-scans?id=${user.user_id}&email=${encodeURIComponent(user.email)}`);
     }
@@ -98,7 +122,9 @@ export default function UserManagement() {
                 0
             );
             setShowEditModal(false);
-            fetchUsers();
+            const prevPage = currentPage;
+            await fetchUsersWithoutReset();
+            setCurrentPage(prevPage);
         } catch (err) {
             console.error(err);
             alert("Failed to update user.");
@@ -182,7 +208,17 @@ export default function UserManagement() {
                                     <td>{guardianAccess}</td>
                                     <td>
                                         <div className="d-flex justify-content-center gap-1">
-                                            <button className="btn btn-info btn-sm" onClick={() => handleView(u)}>View</button>
+                                            <button
+                                                className="btn btn-info btn-sm"
+                                                onClick={() => handleView(u)}
+                                                disabled={u.userType === "Guardian"}
+                                                style={{
+                                                    opacity: u.userType === "Guardian" ? 0.5 : 1,
+                                                    cursor: u.userType === "Guardian" ? "not-allowed" : "pointer"
+                                                }}
+                                            >
+                                                View
+                                            </button>
                                             <button className="btn btn-warning btn-sm" onClick={() => handleEdit(u)}>Edit</button>
                                             <button className="btn btn-danger btn-sm" onClick={() => handleDelete(u.user_id)}>Delete</button>
                                         </div>
@@ -256,7 +292,14 @@ export default function UserManagement() {
                                     <select
                                         className="form-select"
                                         value={editUserData.accountType}
-                                        onChange={(e) => setEditUserData({ ...editUserData, accountType: e.target.value })}
+                                        onChange={(e) => {
+                                            const newType = e.target.value;
+                                            setEditUserData({
+                                                ...editUserData,
+                                                accountType: newType,
+                                                isPremiumUser: newType === "Guardian" ? false : editUserData.isPremiumUser
+                                            });
+                                        }}
                                     >
                                         <option value="User">User</option>
                                         <option value="Guardian">Guardian</option>
@@ -267,14 +310,20 @@ export default function UserManagement() {
                                     <select
                                         className="form-select"
                                         value={editUserData.isPremiumUser ? "Yes" : "No"}
-                                        onChange={(e) => setEditUserData({
-                                            ...editUserData,
-                                            isPremiumUser: e.target.value === "Yes",
-                                        })}
+                                        onChange={(e) =>
+                                            setEditUserData({
+                                                ...editUserData,
+                                                isPremiumUser: e.target.value === "Yes",
+                                            })
+                                        }
+                                        disabled={editUserData.accountType === "Guardian"}
                                     >
                                         <option value="No">No</option>
-                                        <option value="Yes">Yes</option>
+                                        <option value="Yes" disabled={editUserData.accountType === "Guardian"}>Yes</option>
                                     </select>
+                                    {editUserData.accountType === "Guardian" && (
+                                        <div className="form-text text-danger">Guardians cannot have Premium access.</div>
+                                    )}
                                 </div>
                             </div>
                             <div className="modal-footer">
