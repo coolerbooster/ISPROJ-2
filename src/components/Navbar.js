@@ -27,7 +27,6 @@ export default function Navbar() {
 
     return (
         <div className="navbar-wrapper">
-            {/* Top half - blue background */}
             <div className="navbar-top bg-primary text-white px-4 py-3 d-flex flex-column flex-md-row justify-content-between align-items-center">
                 <div className="navbar-title fw-bold fs-4">JUANEYE</div>
                 <button className="btn btn-outline-light btn-sm mt-2 mt-md-0" onClick={handleLogout}>

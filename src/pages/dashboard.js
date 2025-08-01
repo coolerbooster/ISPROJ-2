@@ -56,10 +56,10 @@ export default function Dashboard() {
                 const all = listRes.users || [];
                 const nonAdmin = all.filter(u => u.userType?.toLowerCase() !== 'admin');
 
-                // Just attach scanCount placeholder (no fetching)
+
                 const enriched = nonAdmin.map(u => ({
                     ...u,
-                    scanCount: 0 // will only be fetched if user clicks View Scans
+                    scanCount: 0
                 }));
 
                 const totalUsers = enriched.length;

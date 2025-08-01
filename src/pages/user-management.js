@@ -41,20 +41,20 @@ export default function UserManagement() {
             const res = await listUsersAdmin(1, 1000, searchTerm);
             const nonAdmin = (res.users || []).filter(u => u.userType?.toLowerCase() !== "admin");
 
-            // Fetch scan count for each user
-            const enrichedUsers = await Promise.all(
-                nonAdmin.map(async user => {
+
+            const usersWithScanCounts = await Promise.all(
+                nonAdmin.map(async (user) => {
                     try {
                         const scans = await getUserScansAdmin(user.user_id);
                         return { ...user, scanCount: scans.length };
                     } catch (err) {
-                        console.error(`Error getting scans for ${user.email}`, err);
+                        console.error(`Failed to fetch scans for user ${user.email}`, err);
                         return { ...user, scanCount: 0 };
                     }
                 })
             );
 
-            setAllUsers(enrichedUsers);
+            setAllUsers(usersWithScanCounts);
             setCurrentPage(1);
         } catch (err) {
             console.error("Failed to fetch users", err);
@@ -65,29 +65,31 @@ export default function UserManagement() {
         try {
             const res = await listUsersAdmin(1, 1000, searchTerm);
             const nonAdmin = (res.users || []).filter(u => u.userType?.toLowerCase() !== "admin");
-
-            const enrichedUsers = await Promise.all(
-                nonAdmin.map(async user => {
-                    try {
-                        const scans = await getUserScansAdmin(user.user_id);
-                        return { ...user, scanCount: scans.length };
-                    } catch (err) {
-                        console.error(`Error getting scans for ${user.email}`, err);
-                        return { ...user, scanCount: 0 };
-                    }
-                })
-            );
-
-            setAllUsers(enrichedUsers);
-            // Do not reset currentPage
+            setAllUsers(nonAdmin);
         } catch (err) {
             console.error("Failed to fetch users", err);
         }
     }
 
-    function handleView(user) {
-        router.push(`/user-scans?id=${user.user_id}&email=${encodeURIComponent(user.email)}`);
+    async function handleViewScans(user) {
+        try {
+            const scans = await getUserScansAdmin(user.user_id);
+
+            setAllUsers(prev =>
+                prev.map(u =>
+                    u.user_id === user.user_id
+                        ? { ...u, scanCount: scans.length }
+                        : u
+                )
+            );
+
+            router.push(`/user-scans?id=${user.user_id}&email=${encodeURIComponent(user.email)}&count=${scans.length}`);
+        } catch (err) {
+            console.error("Failed to fetch scans for user:", err);
+            alert("Could not load scan data.");
+        }
     }
+
 
     function handleEdit(user) {
         setEditUserData({
@@ -142,6 +144,16 @@ export default function UserManagement() {
     } else {
         pages.push(1, '...', currentPage, '...', totalPages);
     }
+
+    const handleViewLogs = (user) => {
+        router.push({
+            pathname: '/user-logs',
+            query: {
+                userId: user.user_id || user._id,
+                email: user.email || ''
+            }
+        });
+    };
 
     return (
         <>
@@ -204,20 +216,26 @@ export default function UserManagement() {
                                     <td>{u.email}</td>
                                     <td>{u.userType}</td>
                                     <td>{u.subscriptionType === "Premium" ? "Yes" : "No"}</td>
-                                    <td>{u.scanCount ?? "-"}</td>
+                                    <td>{u.scanCount !== undefined ? u.scanCount : "-"}</td>
                                     <td>{guardianAccess}</td>
                                     <td>
                                         <div className="d-flex justify-content-center gap-1">
                                             <button
-                                                className="btn btn-info btn-sm"
-                                                onClick={() => handleView(u)}
+                                                className="btn btn-primary btn-sm"
+                                                onClick={() => handleViewScans(u)}
                                                 disabled={u.userType === "Guardian"}
                                                 style={{
                                                     opacity: u.userType === "Guardian" ? 0.5 : 1,
                                                     cursor: u.userType === "Guardian" ? "not-allowed" : "pointer"
                                                 }}
                                             >
-                                                View
+                                                View Scans
+                                            </button>
+                                            <button
+                                                className="btn btn-secondary btn-sm"
+                                                onClick={() => handleViewLogs(u)}
+                                            >
+                                                View Logs
                                             </button>
                                             <button className="btn btn-warning btn-sm" onClick={() => handleEdit(u)}>Edit</button>
                                             <button className="btn btn-danger btn-sm" onClick={() => handleDelete(u.user_id)}>Delete</button>
@@ -268,7 +286,7 @@ export default function UserManagement() {
                 )}
             </div>
 
-            {/* Edit modal remains unchanged */}
+            {/* Edit modal */}
             {showEditModal && (
                 <div className="modal fade show d-block" tabIndex="-1">
                     <div className="modal-dialog">

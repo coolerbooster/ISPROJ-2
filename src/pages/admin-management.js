@@ -20,7 +20,7 @@ export default function AdminManagement() {
                 const data = await AdminController.getAdmins();
                 setAdmins(data);
             } catch (err) {
-                console.error('🛑 AdminManagement loadAdmins error:', err);
+                console.error(' AdminManagement loadAdmins error:', err);
             }
         };
         loadAdmins();
@@ -85,7 +85,7 @@ export default function AdminManagement() {
             const updatedAdmins = await AdminController.getAdmins();
             setAdmins(updatedAdmins);
         } catch (err) {
-            console.error('❌ Failed to delete admin:', err);
+            console.error(' Failed to delete admin:', err);
             alert('Failed to delete admin.');
         }
     };

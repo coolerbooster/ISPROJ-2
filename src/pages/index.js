@@ -16,7 +16,7 @@ export default function Login() {
         setError('');
         try {
             await login(email, password);
-            setStep('otp'); // Proceed to OTP input
+            setStep('otp');
         } catch (err) {
             setError(err.message || 'Login failed');
         }

@@ -1,5 +1,3 @@
-// pages/forgot-password.js
-
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { forgotPassword } from '../services/apiService';
