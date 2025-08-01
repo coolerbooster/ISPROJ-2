@@ -26,24 +26,24 @@ async function request(method, path, body = null, auth = false) {
     return data;
 }
 
-// Auth
+// 🔐 Auth
 export function signup(email, password, accountType) {
     return request('POST', '/api/auth/signup', { email, password, accountType });
 }
-export function login(email, password) {
+export function loginWithEmail(email, password) {
     return request('POST', '/api/auth/login', { email, password });
+}
+export function verifyOTP(email, codeValue) {
+    return request('POST', '/api/auth/verify-login', { email, codeValue });
 }
 export function forgotPassword(email) {
     return request('POST', '/api/auth/forgot-password', { email });
-}
-export function verifyLogin(email, codeValue) {
-    return request('POST', '/api/auth/verify-login', { email, codeValue });
 }
 export function resetPassword(email, codeValue, newPassword) {
     return request('POST', '/api/auth/reset-password', { email, codeValue, newPassword });
 }
 
-// User
+// 👤 User
 export function getUserDashboard() {
     return request('GET', '/api/user/dashboard', null, true);
 }
@@ -69,7 +69,7 @@ export function deleteScan(scanId) {
     return request('DELETE', `/api/user/scans/${scanId}`, null, true);
 }
 
-// Guardian
+// 👨‍👩‍👧 Guardian
 export function bindRequest(userEmail) {
     return request('POST', '/api/user/guardian/bind-request', { email: userEmail }, true);
 }
@@ -83,7 +83,7 @@ export function getScansByUser(userId) {
     return request('GET', `/api/user/scans/user?user_id=${userId}`, null, true);
 }
 
-// Admin
+// 🛠️ Admin
 export function getAdminDashboard() {
     return request('GET', '/api/admin/dashboard', null, true);
 }
@@ -122,7 +122,27 @@ export function generateReport(date) {
     return request('GET', `/api/admin/report?date=${date}`, null, true);
 }
 
-// ✅ FIXED: Admin Image Fetch
+// 🧾 Audit Trail
+// 🧾 Audit Trail
+export function getAuditTrail(startDate, endDate) {
+    if (!startDate || !endDate) {
+        throw new Error('Both startDate and endDate are required.');
+    }
+
+    return request(
+        'GET',
+        `/api/admin/audit-trail?startDate=${startDate}&endDate=${endDate}`,
+        null,
+        true
+    );
+}
+
+export function getAuditTrailByUserId(userId) {
+    return request('GET', `/api/admin/users/${userId}/logs`, null, true);
+}
+
+
+// 🖼️ Admin Image Fetch
 export async function getImageByConversationId(conversationId) {
     const res = await fetch(`${BASE_URL}/api/admin/scans/${conversationId}/images`, {
         method: 'GET',
@@ -136,14 +156,6 @@ export async function getImageByConversationId(conversationId) {
     const data = await res.json();
     console.log("🌐 Raw image response from API:", data);
 
-    const base64 = data.image || data.base64 || data.data || data.images; // <- added `data.images`
+    const base64 = data.image || data.base64 || data.data || data.images;
     return { image: base64 };
-}
-
-export function getAuditTrail(page = 1, limit = 10, search = '') {
-    let url = `/api/audit-trail?page=${page}&limit=${limit}`;
-    if (search.trim()) {
-        url += `&search=${encodeURIComponent(search)}`;
-    }
-    return request('GET', url, null, true);
 }
