@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { login, verifyLogin, getUserProfile } from '../services/apiService';
+import { loginWithEmail, verifyOTP, getUserProfile } from '../services/apiService';
 
 export default function Login() {
     const [email, setEmail] = useState('');
@@ -15,7 +15,7 @@ export default function Login() {
         e.preventDefault();
         setError('');
         try {
-            await login(email, password);
+            await loginWithEmail(email, password);
             setStep('otp');
         } catch (err) {
             setError(err.message || 'Login failed');
@@ -26,7 +26,7 @@ export default function Login() {
         e.preventDefault();
         setError('');
         try {
-            const res = await verifyLogin(email, otp);
+            const res = await verifyOTP(email, otp);
             localStorage.setItem('jwt_token', res.token);
             router.push('/dashboard');
         } catch (err) {
