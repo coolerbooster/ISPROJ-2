@@ -158,3 +158,5 @@ export async function getImageByConversationId(conversationId) {
     const base64 = data.image || data.base64 || data.data || data.images;
     return { image: base64 };
 }
+
+

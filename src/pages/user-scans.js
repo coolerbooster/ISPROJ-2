@@ -7,7 +7,7 @@ import {
 } from "../services/apiService";
 import Navbar from "../components/Navbar";
 
-const BASE_URL = "http://167.71.198.130:3001"; // Update if needed
+const BASE_URL = "https://isproj2.ingen.com.ph"; // Update if needed
 
 export default function UserScans() {
     const router = useRouter();

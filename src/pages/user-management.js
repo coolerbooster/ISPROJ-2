@@ -1,3 +1,4 @@
+// user-management.js
 import React, { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import { useRouter } from "next/router";
@@ -22,7 +23,8 @@ export default function UserManagement() {
         accountType: "User",
         isPremiumUser: false,
         password: "",
-        passwordEditable: false
+        passwordEditable: false,
+        scanCount: 0
     });
 
     const router = useRouter();
@@ -40,7 +42,6 @@ export default function UserManagement() {
         try {
             const res = await listUsersAdmin(1, 1000, searchTerm);
             const nonAdmin = (res.users || []).filter(u => u.userType?.toLowerCase() !== "admin");
-
 
             const usersWithScanCounts = await Promise.all(
                 nonAdmin.map(async (user) => {
@@ -90,7 +91,6 @@ export default function UserManagement() {
         }
     }
 
-
     function handleEdit(user) {
         setEditUserData({
             user_id: user.user_id,
@@ -98,7 +98,8 @@ export default function UserManagement() {
             accountType: user.userType,
             isPremiumUser: user.subscriptionType === "Premium",
             password: "",
-            passwordEditable: false
+            passwordEditable: false,
+            scanCount: user.scanCount || 0
         });
         setShowEditModal(true);
     }
@@ -121,7 +122,7 @@ export default function UserManagement() {
                 editUserData.email,
                 editUserData.accountType,
                 editUserData.isPremiumUser,
-                0
+                editUserData.scanCount
             );
             setShowEditModal(false);
             const prevPage = currentPage;
@@ -286,7 +287,6 @@ export default function UserManagement() {
                 )}
             </div>
 
-            {/* Edit modal */}
             {showEditModal && (
                 <div className="modal fade show d-block" tabIndex="-1">
                     <div className="modal-dialog">
