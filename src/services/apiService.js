@@ -1,4 +1,4 @@
-const BASE_URL = 'http://167.71.198.130:3001';
+const BASE_URL = 'https://isproj2.ingen.com.ph';
 const LS_KEY = 'jwt_token';
 
 function getToken() {
@@ -35,6 +35,9 @@ export function login(email, password) {
 }
 export function forgotPassword(email) {
     return request('POST', '/api/auth/forgot-password', { email });
+}
+export function verifyLogin(email, codeValue) {
+    return request('POST', '/api/auth/verify-login', { email, codeValue });
 }
 export function resetPassword(email, codeValue, newPassword) {
     return request('POST', '/api/auth/reset-password', { email, codeValue, newPassword });
@@ -135,4 +138,12 @@ export async function getImageByConversationId(conversationId) {
 
     const base64 = data.image || data.base64 || data.data || data.images; // <- added `data.images`
     return { image: base64 };
+}
+
+export function getAuditTrail(page = 1, limit = 10, search = '') {
+    let url = `/api/audit-trail?page=${page}&limit=${limit}`;
+    if (search.trim()) {
+        url += `&search=${encodeURIComponent(search)}`;
+    }
+    return request('GET', url, null, true);
 }

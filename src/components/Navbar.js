@@ -59,6 +59,13 @@ export default function Navbar() {
                     >
                         Admin Accounts
                     </span>
+                    <span
+                        onClick={() => router.push('/audit-trail')}
+                        className={`nav-link fs-6 ${router.pathname === '/audit-trail' ? 'fw-bold text-primary' : 'text-dark'}`}
+                        style={{ cursor: 'pointer' }}
+                    >
+                        Audit Logs
+                    </span>
                 </div>
                 <div className="nav-welcome mt-2 mt-md-0 text-dark fs-6">
                     Welcome, {username || '...'}
