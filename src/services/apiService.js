@@ -42,6 +42,9 @@ export function forgotPassword(email) {
 export function resetPassword(email, codeValue, newPassword) {
     return request('POST', '/api/auth/reset-password', { email, codeValue, newPassword });
 }
+export function resendOtp(email) {
+    return request('POST', '/api/auth/resend-otp', { email });
+}
 
 // User
 export function getUserDashboard() {
@@ -158,5 +161,6 @@ export async function getImageByConversationId(conversationId) {
     const base64 = data.image || data.base64 || data.data || data.images;
     return { image: base64 };
 }
+
 
 
