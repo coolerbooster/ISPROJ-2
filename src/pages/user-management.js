@@ -265,8 +265,6 @@ export default function UserManagement() {
                         <tr>
                             <th>ID</th>
                             <th>Email</th>
-                            <th>Account Type</th>
-                            <th>Premium</th>
                             <th>Scan Count</th>
                             <th>Actions</th>
                         </tr>
@@ -278,8 +276,6 @@ export default function UserManagement() {
                                     <tr>
                                         <td>{shortenId(u.user_id)}</td>
                                         <td>{u.email}</td>
-                                        <td>{u.userType}</td>
-                                        <td>{u.subscriptionType === "Premium" ? "Yes" : "No"}</td>
                                         <td>{u.scanCount !== undefined ? u.scanCount : "-"}</td>
                                         <td>
                                             <div className="d-flex justify-content-center gap-1">
@@ -321,7 +317,7 @@ export default function UserManagement() {
                         })}
                         {filteredUsers.length === 0 && (
                             <tr>
-                                <td colSpan={6} className="text-center">No users found.</td>
+                                <td colSpan={4} className="text-center">No users found.</td>
                             </tr>
                         )}
                         </tbody>

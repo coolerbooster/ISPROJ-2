@@ -23,6 +23,12 @@ async function request(method, path, body = null, auth = false) {
         console.warn(`Resource not found at ${path}. Returning empty array.`);
         return [];
     }
+    if (res.status === 401) {
+       // Token is invalid or expired
+       localStorage.removeItem(LS_KEY); // Clear bad token
+       window.location.href = '/'; // Redirect to login
+       return Promise.reject(new Error("Invalid or expired token"));
+    }
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
         throw new Error(data.error || data.message || `HTTP ${res.status}`);
