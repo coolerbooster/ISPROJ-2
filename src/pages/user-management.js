@@ -11,10 +11,8 @@ import {
 
 export default function UserManagement() {
     const [allUsers, setAllUsers] = useState([]);
-    const [users, setUsers] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
-    const [entriesPerPage, setEntriesPerPage] = useState(10);
-    const [currentPage, setCurrentPage] = useState(1);
+    const [activeView, setActiveView] = useState("all"); // 'all' | 'premium' | 'non-premium'
 
     const [showEditModal, setShowEditModal] = useState(false);
     const [editUserData, setEditUserData] = useState({
@@ -33,40 +31,36 @@ export default function UserManagement() {
         fetchUsers();
     }, [searchTerm]);
 
-    useEffect(() => {
-        const start = (currentPage - 1) * entriesPerPage;
-        setUsers(allUsers.slice(start, start + entriesPerPage));
-    }, [allUsers, currentPage, entriesPerPage]);
-
     async function fetchUsers() {
         try {
             const res = await listUsersAdmin(1, 1000, searchTerm);
-            const nonAdmin = (res.users || []).filter(u => u.userType?.toLowerCase() !== "admin");
+            const filtered = (res.users || []).filter(u => {
+                const isAdmin = u.userType?.toLowerCase() === "admin";
+                return !isAdmin;
+            });
 
             const usersWithScanCounts = await Promise.all(
-                nonAdmin.map(async (user) => {
+                filtered.map(async (user) => {
                     try {
                         const scans = await getUserScansAdmin(user.user_id);
-                        return { ...user, scanCount: scans.length };
+                        const isGuardian = user.userType === "Guardian";
+                        return {
+                            ...user,
+                            subscriptionType: isGuardian ? "Basic" : user.subscriptionType,
+                            scanCount: scans.length
+                        };
                     } catch (err) {
                         console.error(`Failed to fetch scans for user ${user.email}`, err);
-                        return { ...user, scanCount: 0 };
+                        return {
+                            ...user,
+                            subscriptionType: user.userType === "Guardian" ? "Basic" : user.subscriptionType,
+                            scanCount: 0
+                        };
                     }
                 })
             );
 
             setAllUsers(usersWithScanCounts);
-            setCurrentPage(1);
-        } catch (err) {
-            console.error("Failed to fetch users", err);
-        }
-    }
-
-    async function fetchUsersWithoutReset() {
-        try {
-            const res = await listUsersAdmin(1, 1000, searchTerm);
-            const nonAdmin = (res.users || []).filter(u => u.userType?.toLowerCase() !== "admin");
-            setAllUsers(nonAdmin);
         } catch (err) {
             console.error("Failed to fetch users", err);
         }
@@ -75,15 +69,6 @@ export default function UserManagement() {
     async function handleViewScans(user) {
         try {
             const scans = await getUserScansAdmin(user.user_id);
-
-            setAllUsers(prev =>
-                prev.map(u =>
-                    u.user_id === user.user_id
-                        ? { ...u, scanCount: scans.length }
-                        : u
-                )
-            );
-
             router.push(`/user-scans?id=${user.user_id}&email=${encodeURIComponent(user.email)}&count=${scans.length}`);
         } catch (err) {
             console.error("Failed to fetch scans for user:", err);
@@ -96,7 +81,7 @@ export default function UserManagement() {
             user_id: user.user_id,
             email: user.email,
             accountType: user.userType,
-            isPremiumUser: user.subscriptionType === "Premium",
+            isPremiumUser: user.userType !== "Guardian" && user.subscriptionType === "Premium",
             password: "",
             passwordEditable: false,
             scanCount: user.scanCount || 0
@@ -125,25 +110,11 @@ export default function UserManagement() {
                 editUserData.scanCount
             );
             setShowEditModal(false);
-            const prevPage = currentPage;
-            await fetchUsersWithoutReset();
-            setCurrentPage(prevPage);
+            await fetchUsers();
         } catch (err) {
             console.error(err);
             alert("Failed to update user.");
         }
-    }
-
-    const totalPages = Math.ceil(allUsers.length / entriesPerPage);
-    const pages = [];
-    if (totalPages <= 5) {
-        for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else if (currentPage <= 3) {
-        pages.push(1, 2, 3, '...', totalPages);
-    } else if (currentPage >= totalPages - 2) {
-        pages.push(1, '...', totalPages - 2, totalPages - 1, totalPages);
-    } else {
-        pages.push(1, '...', currentPage, '...', totalPages);
     }
 
     const handleViewLogs = (user) => {
@@ -156,38 +127,48 @@ export default function UserManagement() {
         });
     };
 
+    const filteredUsers = allUsers.filter((u) => {
+        if (u.userType === "Guardian") return false;
+        const isPremium = u.subscriptionType === "Premium";
+        if (activeView === "premium") return isPremium;
+        if (activeView === "non-premium") return !isPremium;
+        return true;
+    });
+
     return (
         <>
             <Navbar />
             <div className="container py-4">
                 <h1 className="fw-bold mb-4">User Management</h1>
 
-                <div className="d-flex flex-column flex-md-row justify-content-between align-items-center mb-3">
-                    <div>
-                        Show{" "}
-                        <select
-                            className="form-select d-inline-block w-auto"
-                            value={entriesPerPage}
-                            onChange={(e) => {
-                                setEntriesPerPage(+e.target.value);
-                                setCurrentPage(1);
-                            }}
+                <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                    <div className="btn-group">
+                        <button
+                            className={`btn ${activeView === "premium" ? "btn-primary" : "btn-outline-primary"}`}
+                            onClick={() => setActiveView("premium")}
                         >
-                            <option value={10}>10</option>
-                            <option value={20}>20</option>
-                            <option value={30}>30</option>
-                        </select>{" "}
-                        entries
+                            Premium Users
+                        </button>
+                        <button
+                            className={`btn ${activeView === "non-premium" ? "btn-primary" : "btn-outline-primary"}`}
+                            onClick={() => setActiveView("non-premium")}
+                        >
+                            Non-Premium Users
+                        </button>
+                        <button
+                            className={`btn ${activeView === "all" ? "btn-primary" : "btn-outline-primary"}`}
+                            onClick={() => setActiveView("all")}
+                        >
+                            All Users
+                        </button>
                     </div>
-                    <div className="mt-2 mt-md-0">
-                        <input
-                            type="text"
-                            className="form-control"
-                            placeholder="Search by email"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
+                    <input
+                        type="text"
+                        className="form-control w-auto"
+                        placeholder="Search by email"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                 </div>
 
                 <div className="table-responsive">
@@ -204,7 +185,7 @@ export default function UserManagement() {
                         </tr>
                         </thead>
                         <tbody>
-                        {users.map((u) => {
+                        {filteredUsers.map((u) => {
                             const guardianAccess =
                                 u.subscriptionType === "Premium" &&
                                 (u.guardianModeAccess ?? u.guardianMode)
@@ -213,7 +194,7 @@ export default function UserManagement() {
 
                             return (
                                 <tr key={u.user_id}>
-                                    <td>{u.user_id}</td>
+                                    <td>...{String(u.user_id).slice(-5)}</td>
                                     <td>{u.email}</td>
                                     <td>{u.userType}</td>
                                     <td>{u.subscriptionType === "Premium" ? "Yes" : "No"}</td>
@@ -224,11 +205,6 @@ export default function UserManagement() {
                                             <button
                                                 className="btn btn-primary btn-sm"
                                                 onClick={() => handleViewScans(u)}
-                                                disabled={u.userType === "Guardian"}
-                                                style={{
-                                                    opacity: u.userType === "Guardian" ? 0.5 : 1,
-                                                    cursor: u.userType === "Guardian" ? "not-allowed" : "pointer"
-                                                }}
                                             >
                                                 View Scans
                                             </button>
@@ -245,7 +221,7 @@ export default function UserManagement() {
                                 </tr>
                             );
                         })}
-                        {users.length === 0 && (
+                        {filteredUsers.length === 0 && (
                             <tr>
                                 <td colSpan={7} className="text-center">No users found.</td>
                             </tr>
@@ -253,40 +229,9 @@ export default function UserManagement() {
                         </tbody>
                     </table>
                 </div>
-
-                {totalPages > 1 && (
-                    <div className="d-flex justify-content-center align-items-center mt-4 gap-2 flex-wrap">
-                        <button
-                            className="btn btn-outline-secondary btn-sm"
-                            disabled={currentPage === 1}
-                            onClick={() => setCurrentPage(currentPage - 1)}
-                        >
-                            &lt;
-                        </button>
-                        {pages.map((p, idx) =>
-                            p === "..." ? (
-                                <span key={idx} className="px-2">...</span>
-                            ) : (
-                                <button
-                                    key={p}
-                                    className={`btn btn-sm ${currentPage === p ? "btn-primary" : "btn-outline-primary"}`}
-                                    onClick={() => setCurrentPage(p)}
-                                >
-                                    {p}
-                                </button>
-                            )
-                        )}
-                        <button
-                            className="btn btn-outline-secondary btn-sm"
-                            disabled={currentPage === totalPages}
-                            onClick={() => setCurrentPage(currentPage + 1)}
-                        >
-                            &gt;
-                        </button>
-                    </div>
-                )}
             </div>
 
+            {/* Modal */}
             {showEditModal && (
                 <div className="modal fade show d-block" tabIndex="-1">
                     <div className="modal-dialog">
