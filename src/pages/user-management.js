@@ -35,7 +35,8 @@ export default function UserManagement() {
     const [userGuardians, setUserGuardians] = useState([]);
     const [availableGuardians, setAvailableGuardians] = useState([]);
     const [selectedGuardian, setSelectedGuardian] = useState('');
-    const [expandedRows, setExpandedRows] = useState([]);
+    const [showViewGuardiansModal, setShowViewGuardiansModal] = useState(false);
+    const [viewingUser, setViewingUser] = useState(null);
 
     const router = useRouter();
 
@@ -217,10 +218,9 @@ export default function UserManagement() {
         }
     };
 
-    const toggleRow = (userId) => {
-        setExpandedRows(prev =>
-            prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
-        );
+    const handleViewGuardians = (user) => {
+        setViewingUser(user);
+        setShowViewGuardiansModal(true);
     };
 
     return (
@@ -309,35 +309,21 @@ export default function UserManagement() {
                                                     <>
                                                         <button
                                                             className="btn btn-info btn-sm"
+                                                            onClick={() => handleViewGuardians(u)}
+                                                        >
+                                                            View Guardians
+                                                        </button>
+                                                        <button
+                                                            className="btn btn-secondary btn-sm"
                                                             onClick={() => handleManageGuardians(u)}
                                                         >
                                                             Manage Guardians
-                                                        </button>
-                                                        <button
-                                                            className="btn btn-light btn-sm"
-                                                            onClick={() => toggleRow(u.user_id)}
-                                                        >
-                                                            {expandedRows.includes(u.user_id) ? 'Hide' : 'Show'} Guardians
                                                         </button>
                                                     </>
                                                 )}
                                             </div>
                                         </td>
                                     </tr>
-                                    {expandedRows.includes(u.user_id) && u.guardians && u.guardians.length > 0 && (
-                                        <tr className="guardian-row">
-                                            <td colSpan="7">
-                                                <div className="guardian-list p-2">
-                                                    <strong>Guardians:</strong>
-                                                    <ul className="list-unstyled">
-                                                        {u.guardians.map(g => (
-                                                            <li key={g.guardian_id}>{g.guardian_email}</li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    )}
                                 </React.Fragment>
                             );
                         })}
@@ -427,9 +413,49 @@ export default function UserManagement() {
                 onBind={handleBindGuardian}
                 setSelectedGuardian={setSelectedGuardian}
             />
+            <ViewGuardiansModal
+               show={showViewGuardiansModal}
+               onHide={() => setShowViewGuardiansModal(false)}
+               user={viewingUser}
+            />
         </>
     );
 }
+
+const ViewGuardiansModal = ({ show, onHide, user }) => {
+   if (!show) return null;
+
+   const guardians = user?.guardians || [];
+
+   return (
+       <div className="modal fade show d-block" tabIndex="-1">
+           <div className="modal-dialog">
+               <div className="modal-content">
+                   <div className="modal-header">
+                       <h5 className="modal-title">Guardians for {user.email}</h5>
+                       <button type="button" className="btn-close" onClick={onHide}></button>
+                   </div>
+                   <div className="modal-body">
+                       {guardians.length > 0 ? (
+                           <ul className="list-group">
+                               {guardians.map(g => (
+                                   <li key={g.guardian_id} className="list-group-item">
+                                       {g.guardian_email}
+                                   </li>
+                               ))}
+                           </ul>
+                       ) : (
+                           <p>No guardians are currently bound to this user.</p>
+                       )}
+                   </div>
+                   <div className="modal-footer">
+                       <button className="btn btn-secondary" onClick={onHide}>Close</button>
+                   </div>
+               </div>
+           </div>
+       </div>
+   );
+};
 
 const GuardiansModal = ({ show, onHide, user, guardians, availableGuardians, onUnbind, onBind, setSelectedGuardian }) => {
     if (!show) return null;
