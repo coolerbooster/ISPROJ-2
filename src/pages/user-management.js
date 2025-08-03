@@ -43,19 +43,24 @@ export default function UserManagement() {
         fetchUsers();
     }, [searchTerm]);
 
+    const [filteredUsers, setFilteredUsers] = useState([]);
+
     useEffect(() => {
-        if (allUsers.length > 0 && activeView !== 'premium') {
-            if ($.fn.DataTable.isDataTable("#usersTable")) {
-                $("#usersTable").DataTable().destroy();
-            }
-            $("#usersTable").DataTable();
-        }
-        return () => {
-            if ($.fn.DataTable.isDataTable("#usersTable") && activeView !== 'premium') {
-                $("#usersTable").DataTable().destroy();
-            }
-        };
-    }, [allUsers, activeView]);
+        const filtered = allUsers.filter((u) => {
+            if (u.userType === "Guardian") return false;
+
+            const matchesSearch = !searchTerm || u.email.toLowerCase().includes(searchTerm.toLowerCase());
+            if (!matchesSearch) return false;
+
+            const isPremium = u.subscriptionType === "Premium";
+            if (activeView === "premium") return isPremium;
+            if (activeView === "non-premium") return !isPremium;
+
+            return true;
+        });
+
+        setFilteredUsers(filtered);
+    }, [allUsers, searchTerm, activeView]);
 
     async function fetchUsers() {
         try {
@@ -94,6 +99,21 @@ export default function UserManagement() {
             console.error("Failed to fetch users", err);
         }
     }
+
+    const refreshUserGuardians = async (userId) => {
+        try {
+            const guardiansResponse = await getUserGuardians(userId);
+            setAllUsers(prevUsers =>
+                prevUsers.map(u =>
+                    u.user_id === userId
+                        ? { ...u, guardians: guardiansResponse.guardians || [] }
+                        : u
+                )
+            );
+        } catch (error) {
+            console.error('Failed to refresh guardians:', error);
+        }
+    };
 
     async function handleViewScans(user) {
         try {
@@ -159,8 +179,8 @@ export default function UserManagement() {
     const handleManageGuardians = async (user) => {
         setSelectedUser(user);
         try {
-            const guardiansResponse = await getUserGuardians(user.user_id);
-            setUserGuardians(guardiansResponse.guardians || []);
+            const completeUser = allUsers.find(u => u.user_id === user.user_id) || user;
+            setUserGuardians(completeUser.guardians || []);
 
             const allGuardiansResponse = await listGuardians();
             setAvailableGuardians(allGuardiansResponse || []);
@@ -174,9 +194,8 @@ export default function UserManagement() {
         if (!confirm('Are you sure you want to unbind this guardian?')) return;
         try {
             await unbindGuardian(selectedUser.user_id, guardianId);
-            if (selectedUser) {
-                handleManageGuardians(selectedUser); // Refresh guardian list
-            }
+            await refreshUserGuardians(selectedUser.user_id);
+            setShowGuardiansModal(false);
         } catch (error) {
             console.error('Error unbinding guardian:', error);
             alert('Failed to unbind guardian.');
@@ -190,9 +209,8 @@ export default function UserManagement() {
         }
         try {
             await bindGuardian(selectedUser.user_id, selectedGuardian);
-            if (selectedUser) {
-                handleManageGuardians(selectedUser); // Refresh guardian list
-            }
+            await refreshUserGuardians(selectedUser.user_id);
+            setShowGuardiansModal(false);
         } catch (error) {
             console.error('Error binding guardian:', error);
             alert('Failed to bind guardian.');
@@ -204,14 +222,6 @@ export default function UserManagement() {
             prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
         );
     };
-
-    const filteredUsers = allUsers.filter((u) => {
-        if (u.userType === "Guardian") return false;
-        const isPremium = u.subscriptionType === "Premium";
-        if (activeView === "premium") return isPremium;
-        if (activeView === "non-premium") return !isPremium;
-        return true;
-    });
 
     return (
         <>
@@ -468,4 +478,3 @@ const GuardiansModal = ({ show, onHide, user, guardians, availableGuardians, onU
         </div>
     );
 };
-

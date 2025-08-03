@@ -19,6 +19,10 @@ async function request(method, path, body = null, auth = false) {
     if (body !== null) opts.body = JSON.stringify(body);
 
     const res = await fetch(BASE_URL + path, opts);
+    if (res.status === 404) {
+        console.warn(`Resource not found at ${path}. Returning empty array.`);
+        return [];
+    }
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
         throw new Error(data.error || data.message || `HTTP ${res.status}`);
@@ -157,7 +161,15 @@ export function getConversationHistory(conversationId) {
 }
 
 export function getUserGuardians(userId) {
-    return request('GET', `/api/users/${userId}/guardians`, null, true);
+    return request('GET', `/api/admin/users/${userId}/guardians`, null, true);
+}
+
+export function bindGuardian(userId, guardianId) {
+    return request('POST', `/api/admin/users/${userId}/guardians`, { guardianId }, true);
+}
+
+export function unbindGuardian(userId, guardianId) {
+    return request('DELETE', `/api/admin/users/${userId}/guardians/${guardianId}`, null, true);
 }
 
 export async function getImageByConversationId(conversationId) {
