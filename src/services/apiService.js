@@ -155,17 +155,12 @@ export function updateUser(userId, data) {
    return request('PUT', `/api/admin/users/${userId}`, data, true);
 }
 
-export function getAuditTrail(startDate, endDate) {
-    if (!startDate || !endDate) {
-        throw new Error('Both startDate and endDate are required.');
+export function getAuditTrail(startDate, endDate, search = '') {
+    let path = `/api/admin/audit-trail?startDate=${startDate}&endDate=${endDate}`;
+    if (search) {
+        path += `&search=${encodeURIComponent(search)}`;
     }
-
-    return request(
-        'GET',
-        `/api/admin/audit-trail?startDate=${startDate}&endDate=${endDate}`,
-        null,
-        true
-    );
+    return request('GET', path, null, true);
 }
 
 
