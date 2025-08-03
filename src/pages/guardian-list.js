@@ -1,11 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
-import { listGuardians, getGuardianBoundUsers } from '../services/apiService';
+import { listGuardians, getGuardianBoundUsers, deleteUser, updateUser, getUserById } from '../services/apiService';
 import { shortenId } from '../utils/stringUtils';
+import styles from '../styles/guardian-list.module.css';
 
 export default function GuardianList() {
     const [guardians, setGuardians] = useState([]);
     const [expandedGuardian, setExpandedGuardian] = useState(null);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [selectedGuardian, setSelectedGuardian] = useState(null);
+    const [email, setEmail] = useState('');
+    const [accountType, setAccountType] = useState('');
+    const [isPremiumUser, setIsPremiumUser] = useState(false);
+    const [scanCount, setScanCount] = useState(0);
 
     useEffect(() => {
         fetchGuardians();
@@ -26,8 +33,59 @@ export default function GuardianList() {
         }
     };
 
+    const handleDelete = async (userId) => {
+        if (window.confirm('Are you sure you want to delete this guardian?')) {
+            try {
+                await deleteUser(userId);
+                fetchGuardians();
+            } catch (error) {
+                console.error('Error deleting guardian:', error);
+                alert('Failed to delete guardian.');
+            }
+        }
+    };
+ 
     const toggleGuardian = (guardianId) => {
         setExpandedGuardian(expandedGuardian === guardianId ? null : guardianId);
+    };
+
+    const openEditModal = async (guardian) => {
+        setSelectedGuardian(guardian);
+        try {
+            const guardianDetails = await getUserById(guardian.user_id);
+            setEmail(guardianDetails.email);
+            setAccountType(guardianDetails.userType);
+            setIsPremiumUser(guardianDetails.subscriptionType === 'Premium');
+            setScanCount(guardianDetails.scanCount || 0);
+            setIsEditModalOpen(true);
+        } catch (error) {
+            console.error('Error fetching guardian details:', error);
+        }
+    };
+
+    const closeEditModal = () => {
+        setIsEditModalOpen(false);
+        setSelectedGuardian(null);
+        setEmail('');
+        setAccountType('');
+        setIsPremiumUser(false);
+        setScanCount(0);
+    };
+
+    const handleUpdate = async () => {
+        try {
+            await updateUser(selectedGuardian.user_id, {
+                email,
+                accountType,
+                isPremiumUser: accountType === 'Guardian' ? false : isPremiumUser,
+                scanCount,
+            });
+            closeEditModal();
+            fetchGuardians();
+        } catch (error) {
+            console.error('Error updating guardian:', error);
+            alert('Failed to update guardian.');
+        }
     };
 
     return (
@@ -57,6 +115,18 @@ export default function GuardianList() {
                                             >
                                                 {expandedGuardian === guardian.user_id ? 'Hide Users' : 'Show Users'}
                                             </button>
+                                            <button
+                                                className="btn btn-info btn-sm ms-2"
+                                                onClick={() => openEditModal(guardian)}
+                                            >
+                                                Edit
+                                            </button>
+                                            <button
+                                                className="btn btn-danger btn-sm ms-2"
+                                                onClick={() => handleDelete(guardian.user_id)}
+                                            >
+                                                Delete
+                                            </button>
                                         </td>
                                     </tr>
                                     {expandedGuardian === guardian.user_id && (
@@ -64,22 +134,26 @@ export default function GuardianList() {
                                             <td colSpan="3">
                                                 <div className="p-3">
                                                     <h5>Bound Users</h5>
-                                                    <table className="table table-sm table-bordered">
-                                                        <thead>
-                                                            <tr>
-                                                                <th>User ID</th>
-                                                                <th>Email</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {guardian.boundUsers.map((user) => (
-                                                                <tr key={user.user_id}>
-                                                                    <td>{shortenId(user.user_id)}</td>
-                                                                    <td>{user.email}</td>
+                                                    {guardian.boundUsers.length > 0 ? (
+                                                        <table className="table table-sm table-bordered">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th>User ID</th>
+                                                                    <th>Email</th>
                                                                 </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
+                                                            </thead>
+                                                            <tbody>
+                                                                {guardian.boundUsers.map((user) => (
+                                                                    <tr key={user.user_id}>
+                                                                        <td>{shortenId(user.user_id)}</td>
+                                                                        <td>{user.email}</td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    ) : (
+                                                        <p>No users are bound to this guardian.</p>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>
@@ -90,6 +164,48 @@ export default function GuardianList() {
                     </table>
                 </div>
             </div>
+
+            {isEditModalOpen && (
+                <div className="modal fade show d-block" tabIndex="-1">
+                    <div className="modal-dialog">
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <h5 className="modal-title">Edit Guardian</h5>
+                                <button type="button" className="btn-close" onClick={closeEditModal}></button>
+                            </div>
+                            <div className="modal-body">
+                                <div className="mb-3">
+                                    <label htmlFor="email" className="form-label">Email</label>
+                                    <input
+                                        id="email"
+                                        type="email"
+                                        className="form-control"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                <div className="mb-3">
+                                    <label htmlFor="accountType" className="form-label">Account Type</label>
+                                    <select
+                                        id="accountType"
+                                        className="form-select"
+                                        value={accountType}
+                                        onChange={(e) => setAccountType(e.target.value)}
+                                    >
+                                        <option value="Guardian">Guardian</option>
+                                        <option value="User">User</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button type="button" className="btn btn-secondary" onClick={closeEditModal}>Cancel</button>
+                                <button type="button" className="btn btn-primary" onClick={handleUpdate}>Save Changes</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 }

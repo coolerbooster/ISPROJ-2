@@ -75,7 +75,9 @@ export default function UserManagement() {
                 filtered.map(async (user) => {
                     try {
                         const scans = await getUserScansAdmin(user.user_id);
-                        const guardians = user.subscriptionType === 'Premium' ? await getUserGuardians(user.user_id) : [];
+                        const guardians = user.subscriptionType === 'Premium'
+                            ? await getUserGuardians(user.user_id)
+                            : [];
                         const isGuardian = user.userType === "Guardian";
                         return {
                             ...user,
@@ -267,57 +269,72 @@ export default function UserManagement() {
                             <th>Email</th>
                             <th>Scan Count</th>
                             <th>Actions</th>
+                            <th>Guardian Management</th>
                         </tr>
                         </thead>
                         <tbody>
-                        {filteredUsers.map((u) => {
-                            return (
-                                <React.Fragment key={u.user_id}>
-                                    <tr>
-                                        <td>{shortenId(u.user_id)}</td>
-                                        <td>{u.email}</td>
-                                        <td>{u.scanCount !== undefined ? u.scanCount : "-"}</td>
-                                        <td>
+                        {filteredUsers.map(u => (
+                            <React.Fragment key={u.user_id}>
+                                <tr>
+                                    <td>{shortenId(u.user_id)}</td>
+                                    <td>{u.email}</td>
+                                    <td>{u.scanCount !== undefined ? u.scanCount : "-"}</td>
+                                    {/* Actions column */}
+                                    <td>
+                                        <div className="d-flex justify-content-center gap-1">
+                                            <button
+                                                className="btn btn-primary btn-sm"
+                                                onClick={() => handleViewScans(u)}
+                                            >
+                                                View Scans
+                                            </button>
+                                            <button
+                                                className="btn btn-secondary btn-sm"
+                                                onClick={() => handleViewLogs(u)}
+                                            >
+                                                View Logs
+                                            </button>
+                                            <button
+                                                className="btn btn-warning btn-sm"
+                                                onClick={() => handleEdit(u)}
+                                            >
+                                                Edit
+                                            </button>
+                                            <button
+                                                className="btn btn-danger btn-sm"
+                                                onClick={() => handleDelete(u.user_id)}
+                                            >
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </td>
+                                    {/* Guardian Management column */}
+                                    <td>
+                                        {u.subscriptionType === 'Premium' ? (
                                             <div className="d-flex justify-content-center gap-1">
                                                 <button
-                                                    className="btn btn-primary btn-sm"
-                                                    onClick={() => handleViewScans(u)}
+                                                    className="btn btn-info btn-sm"
+                                                    onClick={() => handleViewGuardians(u)}
                                                 >
-                                                    View Scans
+                                                    View Guardians
                                                 </button>
                                                 <button
                                                     className="btn btn-secondary btn-sm"
-                                                    onClick={() => handleViewLogs(u)}
+                                                    onClick={() => handleManageGuardians(u)}
                                                 >
-                                                    View Logs
+                                                    Manage Guardians
                                                 </button>
-                                                <button className="btn btn-warning btn-sm" onClick={() => handleEdit(u)}>Edit</button>
-                                                <button className="btn btn-danger btn-sm" onClick={() => handleDelete(u.user_id)}>Delete</button>
-                                                {u.subscriptionType === 'Premium' && (
-                                                    <>
-                                                        <button
-                                                            className="btn btn-info btn-sm"
-                                                            onClick={() => handleViewGuardians(u)}
-                                                        >
-                                                            View Guardians
-                                                        </button>
-                                                        <button
-                                                            className="btn btn-secondary btn-sm"
-                                                            onClick={() => handleManageGuardians(u)}
-                                                        >
-                                                            Manage Guardians
-                                                        </button>
-                                                    </>
-                                                )}
                                             </div>
-                                        </td>
-                                    </tr>
-                                </React.Fragment>
-                            );
-                        })}
+                                        ) : (
+                                            "-"
+                                        )}
+                                    </td>
+                                </tr>
+                            </React.Fragment>
+                        ))}
                         {filteredUsers.length === 0 && (
                             <tr>
-                                <td colSpan={4} className="text-center">No users found.</td>
+                                <td colSpan={5} className="text-center">No users found.</td>
                             </tr>
                         )}
                         </tbody>
@@ -325,7 +342,7 @@ export default function UserManagement() {
                 </div>
             </div>
 
-            {/* Modal */}
+            {/* Edit User Modal */}
             {showEditModal && (
                 <div className="modal fade show d-block" tabIndex="-1">
                     <div className="modal-dialog">
@@ -391,6 +408,8 @@ export default function UserManagement() {
                     </div>
                 </div>
             )}
+
+            {/* Manage Guardians Modal */}
             <GuardiansModal
                 show={showGuardiansModal}
                 onHide={() => setShowGuardiansModal(false)}
@@ -401,48 +420,49 @@ export default function UserManagement() {
                 onBind={handleBindGuardian}
                 setSelectedGuardian={setSelectedGuardian}
             />
+
+            {/* View Guardians Modal */}
             <ViewGuardiansModal
-               show={showViewGuardiansModal}
-               onHide={() => setShowViewGuardiansModal(false)}
-               user={viewingUser}
+                show={showViewGuardiansModal}
+                onHide={() => setShowViewGuardiansModal(false)}
+                user={viewingUser}
             />
         </>
     );
 }
 
 const ViewGuardiansModal = ({ show, onHide, user }) => {
-   if (!show) return null;
+    if (!show) return null;
+    const guardians = user?.guardians || [];
 
-   const guardians = user?.guardians || [];
-
-   return (
-       <div className="modal fade show d-block" tabIndex="-1">
-           <div className="modal-dialog">
-               <div className="modal-content">
-                   <div className="modal-header">
-                       <h5 className="modal-title">Guardians for {user.email}</h5>
-                       <button type="button" className="btn-close" onClick={onHide}></button>
-                   </div>
-                   <div className="modal-body">
-                       {guardians.length > 0 ? (
-                           <ul className="list-group">
-                               {guardians.map(g => (
-                                   <li key={g.guardian_id} className="list-group-item">
-                                       {g.guardian_email}
-                                   </li>
-                               ))}
-                           </ul>
-                       ) : (
-                           <p>No guardians are currently bound to this user.</p>
-                       )}
-                   </div>
-                   <div className="modal-footer">
-                       <button className="btn btn-secondary" onClick={onHide}>Close</button>
-                   </div>
-               </div>
-           </div>
-       </div>
-   );
+    return (
+        <div className="modal fade show d-block" tabIndex="-1">
+            <div className="modal-dialog">
+                <div className="modal-content">
+                    <div className="modal-header">
+                        <h5 className="modal-title">Guardians for {user.email}</h5>
+                        <button type="button" className="btn-close" onClick={onHide}></button>
+                    </div>
+                    <div className="modal-body">
+                        {guardians.length > 0 ? (
+                            <ul className="list-group">
+                                {guardians.map(g => (
+                                    <li key={g.guardian_id} className="list-group-item">
+                                        {g.guardian_email}
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p>No guardians are currently bound to this user.</p>
+                        )}
+                    </div>
+                    <div className="modal-footer">
+                        <button className="btn btn-secondary" onClick={onHide}>Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 };
 
 const GuardiansModal = ({ show, onHide, user, guardians, availableGuardians, onUnbind, onBind, setSelectedGuardian }) => {

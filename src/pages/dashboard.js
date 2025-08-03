@@ -55,23 +55,15 @@ export default function Dashboard() {
 
                 const listRes = await listUsersAdmin(1, 1000, '');
                 const all = listRes.users || [];
-                const nonAdmin = all.filter(u => u.userType?.toLowerCase() !== 'admin');
+                const nonAdminUsers = all.filter(u => u.userType?.toLowerCase() !== 'admin');
 
+                const customers = nonAdminUsers.filter(u => u.userType?.toLowerCase() !== 'guardian');
+                const totalUsers = customers.length;
+                const guardians = nonAdminUsers.filter(u => u.userType?.toLowerCase() === 'guardian').length;
+                const premiumUsers = customers.filter(u => u.subscriptionType === 'Premium').length;
+                const freeUsers = customers.filter(u => u.subscriptionType === 'Free').length;
 
-                const enriched = nonAdmin.map(u => ({
-                    ...u,
-                    scanCount: 0
-                }));
-
-                const totalUsers = enriched.length;
-                const guardians = enriched.filter(u => u.userType?.toLowerCase() === 'guardian').length;
-                const premiumUsers = enriched.filter(u => u.subscriptionType === 'Premium').length;
-                const freeUsers = enriched.filter(u =>
-                    u.subscriptionType === 'Free' &&
-                    u.userType?.toLowerCase() !== 'guardian'
-                ).length;
-
-                setUsers(enriched);
+                setUsers(nonAdminUsers.slice(0, 3));
                 setUserStats({ total: totalUsers, free: freeUsers, premium: premiumUsers, guardian: guardians });
             } catch (err) {
                 console.error('Dashboard load failed:', err);

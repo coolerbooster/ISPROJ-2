@@ -122,6 +122,9 @@ export function updateUserPasswordAdmin(userId, password) {
 export function deleteUserAdmin(userId) {
     return request('DELETE', `/api/admin/users/${userId}`, null, true);
 }
+export function deleteUser(userId) {
+    return request('DELETE', `/api/admin/users/${userId}`, null, true);
+}
 export function getUserScansAdmin(userId) {
     return request('GET', `/api/admin/users/${userId}/scans`, null, true);
 }
@@ -143,6 +146,14 @@ export function getGuardianBoundUsers(guardianId) {
     return request('GET', `/api/admin/guardians/${guardianId}/bound-users`, null, true);
 }
 
+
+export function getUserById(userId) {
+   return request('GET', `/api/admin/users/${userId}`, null, true);
+}
+
+export function updateUser(userId, data) {
+   return request('PUT', `/api/admin/users/${userId}`, data, true);
+}
 
 export function getAuditTrail(startDate, endDate) {
     if (!startDate || !endDate) {
