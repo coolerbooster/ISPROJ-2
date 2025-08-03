@@ -1,5 +1,6 @@
 // user-management.js
 import React, { useState, useEffect } from "react";
+import $ from "jquery";
 import Navbar from "../components/Navbar";
 import { useRouter } from "next/router";
 import {
@@ -31,6 +32,20 @@ export default function UserManagement() {
     useEffect(() => {
         fetchUsers();
     }, [searchTerm]);
+
+    useEffect(() => {
+        if (allUsers.length > 0) {
+            if ($.fn.DataTable.isDataTable("#usersTable")) {
+                $("#usersTable").DataTable().destroy();
+            }
+            $("#usersTable").DataTable();
+        }
+        return () => {
+            if ($.fn.DataTable.isDataTable("#usersTable")) {
+                $("#usersTable").DataTable().destroy();
+            }
+        };
+    }, [allUsers]);
 
     async function fetchUsers() {
         try {
@@ -173,7 +188,7 @@ export default function UserManagement() {
                 </div>
 
                 <div className="table-responsive">
-                    <table className="table table-bordered table-hover text-center">
+                    <table id="usersTable" className="table table-bordered table-hover text-center">
                         <thead className="table-light">
                         <tr>
                             <th>ID</th>

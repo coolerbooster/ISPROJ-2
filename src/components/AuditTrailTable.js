@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getAuditTrail } from '../services/apiService';
+import $ from 'jquery';
 import { shortenId } from '../utils/stringUtils';
 
 export default function AuditTrailTable() {
@@ -28,12 +29,26 @@ export default function AuditTrailTable() {
         fetchAuditTrail();
     }, []);
 
+    useEffect(() => {
+        if (logs.length > 0) {
+            if ($.fn.DataTable.isDataTable("#auditTrailTable")) {
+                $("#auditTrailTable").DataTable().destroy();
+            }
+            $("#auditTrailTable").DataTable();
+        }
+        return () => {
+            if ($.fn.DataTable.isDataTable("#auditTrailTable")) {
+                $("#auditTrailTable").DataTable().destroy();
+            }
+        };
+    }, [logs]);
+
     return (
         <div className="container py-4">
             <h3 className="mb-4">Audit Trail Logs (Past 7 Days)</h3>
             {error && <div className="alert alert-danger">{error}</div>}
             <div className="table-responsive">
-                <table className="table table-bordered text-center">
+                <table id="auditTrailTable" className="table table-bordered text-center">
                     <thead className="table-light">
                     <tr>
                         <th>Method</th>

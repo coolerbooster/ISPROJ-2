@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
+import $ from "jquery";
 import {
     getUserScansAdmin,
     deleteScanAdmin,
@@ -17,8 +18,6 @@ export default function UserScans() {
     const [scans, setScans] = useState([]);
     const [loading, setLoading] = useState(false);
     const [selectedImage, setSelectedImage] = useState(null);
-    const [currentPage, setCurrentPage] = useState(1);
-    const entriesPerPage = 10;
 
     const [showModal, setShowModal] = useState(false);
     const [conversationMessages, setConversationMessages] = useState([]);
@@ -27,6 +26,15 @@ export default function UserScans() {
     useEffect(() => {
         if (id) fetchScans();
     }, [id]);
+
+    useEffect(() => {
+        if (scans.length > 0) {
+            if ($.fn.DataTable.isDataTable("#scansTable")) {
+                $("#scansTable").DataTable().destroy();
+            }
+            $("#scansTable").DataTable();
+        }
+    }, [scans]);
 
     const fetchScans = async () => {
         setLoading(true);
@@ -97,12 +105,6 @@ export default function UserScans() {
         setLoadingMessages(false);
     };
 
-    const paginatedScans = scans.slice(
-        (currentPage - 1) * entriesPerPage,
-        currentPage * entriesPerPage
-    );
-    const totalPages = Math.ceil(scans.length / entriesPerPage);
-
     return (
         <>
             <Navbar />
@@ -127,7 +129,7 @@ export default function UserScans() {
                 ) : (
                     <>
                         <div className="table-responsive">
-                            <table className="table table-bordered text-center">
+                            <table id="scansTable" className="table table-bordered text-center">
                                 <thead className="table-light">
                                 <tr>
                                     <th>ID</th>
@@ -139,7 +141,7 @@ export default function UserScans() {
                                 </tr>
                                 </thead>
                                 <tbody>
-                                {paginatedScans.map((scan, idx) => {
+                                {scans.map((scan, idx) => {
                                     const scanId = scan.scanId || scan.conversationId || idx;
                                     return (
                                         <tr key={scanId}>
@@ -197,38 +199,6 @@ export default function UserScans() {
                                 </tbody>
                             </table>
                         </div>
-
-                        {totalPages > 1 && (
-                            <div className="d-flex justify-content-center align-items-center mt-4 gap-2 flex-wrap">
-                                <button
-                                    className="btn btn-outline-secondary btn-sm"
-                                    disabled={currentPage === 1}
-                                    onClick={() => setCurrentPage(currentPage - 1)}
-                                >
-                                    &lt;
-                                </button>
-                                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                                    <button
-                                        key={p}
-                                        className={`btn btn-sm ${
-                                            currentPage === p
-                                                ? "btn-primary"
-                                                : "btn-outline-primary"
-                                        }`}
-                                        onClick={() => setCurrentPage(p)}
-                                    >
-                                        {p}
-                                    </button>
-                                ))}
-                                <button
-                                    className="btn btn-outline-secondary btn-sm"
-                                    disabled={currentPage === totalPages}
-                                    onClick={() => setCurrentPage(currentPage + 1)}
-                                >
-                                    &gt;
-                                </button>
-                            </div>
-                        )}
                     </>
                 )}
 

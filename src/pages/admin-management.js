@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
+import $ from 'jquery';
 import { useRouter } from 'next/router';
 import { AdminController } from '../controllers/AdminController';
 
@@ -25,6 +26,20 @@ export default function AdminManagement() {
         };
         loadAdmins();
     }, []);
+
+    useEffect(() => {
+        if (admins.length > 0) {
+            if ($.fn.DataTable.isDataTable("#adminsTable")) {
+                $("#adminsTable").DataTable().destroy();
+            }
+            $("#adminsTable").DataTable();
+        }
+        return () => {
+            if ($.fn.DataTable.isDataTable("#adminsTable")) {
+                $("#adminsTable").DataTable().destroy();
+            }
+        };
+    }, [admins]);
 
     const handleSearch = async (e) => {
         const query = e.target.value;
@@ -68,14 +83,6 @@ export default function AdminManagement() {
             alert('Failed to create admin: ' + err.message);
         }
     };
-
-    const filtered = admins.filter(admin =>
-        admin.email.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    const totalPages = Math.ceil(filtered.length / entries);
-    const start = (currentPage - 1) * entries;
-    const paginatedAdmins = filtered.slice(start, start + entries);
 
     const handleDelete = async (id) => {
         if (!confirm('Are you sure you want to delete this admin?')) return;
@@ -130,7 +137,7 @@ export default function AdminManagement() {
                 </div>
 
                 <div className="table-responsive">
-                    <table className="table table-bordered text-center">
+                    <table id="adminsTable" className="table table-bordered text-center">
                         <thead className="table-light">
                         <tr>
                             <th>#</th>
@@ -139,9 +146,9 @@ export default function AdminManagement() {
                         </tr>
                         </thead>
                         <tbody>
-                        {paginatedAdmins.map((admin, index) => (
+                        {admins.map((admin, index) => (
                             <tr key={admin.id}>
-                                <td>{start + index + 1}</td>
+                                <td>{index + 1}</td>
                                 <td>{admin.email}</td>
                                 <td>
                                     <button className="btn btn-sm btn-danger" onClick={() => handleDelete(admin.id)}>
@@ -150,7 +157,7 @@ export default function AdminManagement() {
                                 </td>
                             </tr>
                         ))}
-                        {paginatedAdmins.length === 0 && (
+                        {admins.length === 0 && (
                             <tr>
                                 <td colSpan="3" className="text-muted">No admins found.</td>
                             </tr>
@@ -158,24 +165,6 @@ export default function AdminManagement() {
                         </tbody>
                     </table>
                 </div>
-
-                {totalPages > 1 && (
-                    <nav className="d-flex justify-content-center mt-3">
-                        <ul className="pagination pagination-sm">
-                            <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                                <button className="page-link" onClick={() => setCurrentPage(currentPage - 1)}>&lt;</button>
-                            </li>
-                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                                <li key={page} className={`page-item ${page === currentPage ? 'active' : ''}`}>
-                                    <button className="page-link" onClick={() => setCurrentPage(page)}>{page}</button>
-                                </li>
-                            ))}
-                            <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-                                <button className="page-link" onClick={() => setCurrentPage(currentPage + 1)}>&gt;</button>
-                            </li>
-                        </ul>
-                    </nav>
-                )}
             </div>
 
             {/* Add Admin Modal */}

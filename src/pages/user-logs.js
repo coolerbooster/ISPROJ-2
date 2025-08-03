@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
+import $ from "jquery";
 import Navbar from "../components/Navbar";
 import { getUserLogs } from "../services/apiService";
 
@@ -21,6 +22,20 @@ export default function UserLogsPage() {
         setEmail(email);
         fetchLogs(userId);
     }, [isReady, query]);
+
+    useEffect(() => {
+        if (logs.length > 0) {
+            if ($.fn.DataTable.isDataTable("#logsTable")) {
+                $("#logsTable").DataTable().destroy();
+            }
+            $("#logsTable").DataTable();
+        }
+        return () => {
+            if ($.fn.DataTable.isDataTable("#logsTable")) {
+                $("#logsTable").DataTable().destroy();
+            }
+        };
+    }, [logs]);
 
     const fetchLogs = async (userId) => {
         try {
@@ -57,7 +72,7 @@ export default function UserLogsPage() {
                     <p>No logs found for this user.</p>
                 ) : (
                     <div className="table-responsive">
-                        <table className="table table-bordered text-center">
+                        <table id="logsTable" className="table table-bordered text-center">
                             <thead className="table-light">
                             <tr>
                                 <th>Method</th>

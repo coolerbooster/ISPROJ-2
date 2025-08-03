@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import $ from 'jquery';
 import { getAdminDashboard, listUsersAdmin, generateReport } from '../services/apiService';
 import Navbar from '../components/Navbar';
 import { AuthController } from '../controllers/AuthController';
@@ -81,6 +82,20 @@ export default function Dashboard() {
 
         fetchData();
     }, []);
+
+    useEffect(() => {
+        if (users.length > 0) {
+            if ($.fn.DataTable.isDataTable("#dashboardTable")) {
+                $("#dashboardTable").DataTable().destroy();
+            }
+            $("#dashboardTable").DataTable();
+        }
+        return () => {
+            if ($.fn.DataTable.isDataTable("#dashboardTable")) {
+                $("#dashboardTable").DataTable().destroy();
+            }
+        };
+    }, [users]);
 
     async function downloadReport(date) {
         if (!date) {
@@ -254,7 +269,7 @@ export default function Dashboard() {
                             </span>
                         </div>
                         <div className="table-responsive">
-                            <table className="table table-bordered table-hover text-center">
+                            <table id="dashboardTable" className="table table-bordered table-hover text-center">
                                 <thead className="table-light">
                                 <tr>
                                     <th>ID</th>
@@ -266,7 +281,7 @@ export default function Dashboard() {
                                 </tr>
                                 </thead>
                                 <tbody>
-                                {users.slice(0, 3).map(u => {
+                                {users.map(u => {
                                     const guardianAccess =
                                         u.subscriptionType === 'Premium' &&
                                         (u.guardianModeAccess ?? u.guardianMode)
