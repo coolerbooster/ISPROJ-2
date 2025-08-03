@@ -7,7 +7,11 @@ import {
     listUsersAdmin,
     deleteUserAdmin,
     updateUserAdmin,
-    getUserScansAdmin
+    getUserScansAdmin,
+    getUserGuardians,
+    unbindGuardian,
+    bindGuardian,
+    listGuardians
 } from "../services/apiService";
 import { shortenId } from "../utils/stringUtils";
 
@@ -26,6 +30,12 @@ export default function UserManagement() {
         passwordEditable: false,
         scanCount: 0
     });
+    const [showGuardiansModal, setShowGuardiansModal] = useState(false);
+    const [selectedUser, setSelectedUser] = useState(null);
+    const [userGuardians, setUserGuardians] = useState([]);
+    const [availableGuardians, setAvailableGuardians] = useState([]);
+    const [selectedGuardian, setSelectedGuardian] = useState('');
+    const [expandedRows, setExpandedRows] = useState([]);
 
     const router = useRouter();
 
@@ -34,18 +44,18 @@ export default function UserManagement() {
     }, [searchTerm]);
 
     useEffect(() => {
-        if (allUsers.length > 0) {
+        if (allUsers.length > 0 && activeView !== 'premium') {
             if ($.fn.DataTable.isDataTable("#usersTable")) {
                 $("#usersTable").DataTable().destroy();
             }
             $("#usersTable").DataTable();
         }
         return () => {
-            if ($.fn.DataTable.isDataTable("#usersTable")) {
+            if ($.fn.DataTable.isDataTable("#usersTable") && activeView !== 'premium') {
                 $("#usersTable").DataTable().destroy();
             }
         };
-    }, [allUsers]);
+    }, [allUsers, activeView]);
 
     async function fetchUsers() {
         try {
@@ -55,28 +65,31 @@ export default function UserManagement() {
                 return !isAdmin;
             });
 
-            const usersWithScanCounts = await Promise.all(
+            const usersWithData = await Promise.all(
                 filtered.map(async (user) => {
                     try {
                         const scans = await getUserScansAdmin(user.user_id);
+                        const guardians = user.subscriptionType === 'Premium' ? await getUserGuardians(user.user_id) : [];
                         const isGuardian = user.userType === "Guardian";
                         return {
                             ...user,
                             subscriptionType: isGuardian ? "Basic" : user.subscriptionType,
-                            scanCount: scans.length
+                            scanCount: scans.length,
+                            guardians: guardians.guardians || []
                         };
                     } catch (err) {
-                        console.error(`Failed to fetch scans for user ${user.email}`, err);
+                        console.error(`Failed to fetch data for user ${user.email}`, err);
                         return {
                             ...user,
                             subscriptionType: user.userType === "Guardian" ? "Basic" : user.subscriptionType,
-                            scanCount: 0
+                            scanCount: 0,
+                            guardians: []
                         };
                     }
                 })
             );
 
-            setAllUsers(usersWithScanCounts);
+            setAllUsers(usersWithData);
         } catch (err) {
             console.error("Failed to fetch users", err);
         }
@@ -141,6 +154,55 @@ export default function UserManagement() {
                 email: user.email || ''
             }
         });
+    };
+
+    const handleManageGuardians = async (user) => {
+        setSelectedUser(user);
+        try {
+            const guardiansResponse = await getUserGuardians(user.user_id);
+            setUserGuardians(guardiansResponse.guardians || []);
+
+            const allGuardiansResponse = await listGuardians();
+            setAvailableGuardians(allGuardiansResponse || []);
+            setShowGuardiansModal(true);
+        } catch (error) {
+            console.error('Error fetching guardians:', error);
+        }
+    };
+
+    const handleUnbindGuardian = async (guardianId) => {
+        if (!confirm('Are you sure you want to unbind this guardian?')) return;
+        try {
+            await unbindGuardian(selectedUser.user_id, guardianId);
+            if (selectedUser) {
+                handleManageGuardians(selectedUser); // Refresh guardian list
+            }
+        } catch (error) {
+            console.error('Error unbinding guardian:', error);
+            alert('Failed to unbind guardian.');
+        }
+    };
+
+    const handleBindGuardian = async () => {
+        if (!selectedGuardian) {
+            alert('Please select a guardian to bind.');
+            return;
+        }
+        try {
+            await bindGuardian(selectedUser.user_id, selectedGuardian);
+            if (selectedUser) {
+                handleManageGuardians(selectedUser); // Refresh guardian list
+            }
+        } catch (error) {
+            console.error('Error binding guardian:', error);
+            alert('Failed to bind guardian.');
+        }
+    };
+
+    const toggleRow = (userId) => {
+        setExpandedRows(prev =>
+            prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+        );
     };
 
     const filteredUsers = allUsers.filter((u) => {
@@ -209,32 +271,64 @@ export default function UserManagement() {
                                     : "No";
 
                             return (
-                                <tr key={u.user_id}>
-                                    <td>{shortenId(u.user_id)}</td>
-                                    <td>{u.email}</td>
-                                    <td>{u.userType}</td>
-                                    <td>{u.subscriptionType === "Premium" ? "Yes" : "No"}</td>
-                                    <td>{u.scanCount !== undefined ? u.scanCount : "-"}</td>
-                                    <td>{guardianAccess}</td>
-                                    <td>
-                                        <div className="d-flex justify-content-center gap-1">
-                                            <button
-                                                className="btn btn-primary btn-sm"
-                                                onClick={() => handleViewScans(u)}
-                                            >
-                                                View Scans
-                                            </button>
-                                            <button
-                                                className="btn btn-secondary btn-sm"
-                                                onClick={() => handleViewLogs(u)}
-                                            >
-                                                View Logs
-                                            </button>
-                                            <button className="btn btn-warning btn-sm" onClick={() => handleEdit(u)}>Edit</button>
-                                            <button className="btn btn-danger btn-sm" onClick={() => handleDelete(u.user_id)}>Delete</button>
-                                        </div>
-                                    </td>
-                                </tr>
+                                <React.Fragment key={u.user_id}>
+                                    <tr>
+                                        <td>{shortenId(u.user_id)}</td>
+                                        <td>{u.email}</td>
+                                        <td>{u.userType}</td>
+                                        <td>{u.subscriptionType === "Premium" ? "Yes" : "No"}</td>
+                                        <td>{u.scanCount !== undefined ? u.scanCount : "-"}</td>
+                                        <td>{guardianAccess}</td>
+                                        <td>
+                                            <div className="d-flex justify-content-center gap-1">
+                                                <button
+                                                    className="btn btn-primary btn-sm"
+                                                    onClick={() => handleViewScans(u)}
+                                                >
+                                                    View Scans
+                                                </button>
+                                                <button
+                                                    className="btn btn-secondary btn-sm"
+                                                    onClick={() => handleViewLogs(u)}
+                                                >
+                                                    View Logs
+                                                </button>
+                                                <button className="btn btn-warning btn-sm" onClick={() => handleEdit(u)}>Edit</button>
+                                                <button className="btn btn-danger btn-sm" onClick={() => handleDelete(u.user_id)}>Delete</button>
+                                                {u.subscriptionType === 'Premium' && (
+                                                    <>
+                                                        <button
+                                                            className="btn btn-info btn-sm"
+                                                            onClick={() => handleManageGuardians(u)}
+                                                        >
+                                                            Manage Guardians
+                                                        </button>
+                                                        <button
+                                                            className="btn btn-light btn-sm"
+                                                            onClick={() => toggleRow(u.user_id)}
+                                                        >
+                                                            {expandedRows.includes(u.user_id) ? 'Hide' : 'Show'} Guardians
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {expandedRows.includes(u.user_id) && u.guardians && u.guardians.length > 0 && (
+                                        <tr className="guardian-row">
+                                            <td colSpan="7">
+                                                <div className="guardian-list p-2">
+                                                    <strong>Guardians:</strong>
+                                                    <ul className="list-unstyled">
+                                                        {u.guardians.map(g => (
+                                                            <li key={g.guardian_id}>{g.guardian_email}</li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </React.Fragment>
                             );
                         })}
                         {filteredUsers.length === 0 && (
@@ -313,6 +407,65 @@ export default function UserManagement() {
                     </div>
                 </div>
             )}
+            <GuardiansModal
+                show={showGuardiansModal}
+                onHide={() => setShowGuardiansModal(false)}
+                user={selectedUser}
+                guardians={userGuardians}
+                availableGuardians={availableGuardians}
+                onUnbind={handleUnbindGuardian}
+                onBind={handleBindGuardian}
+                setSelectedGuardian={setSelectedGuardian}
+            />
         </>
     );
 }
+
+const GuardiansModal = ({ show, onHide, user, guardians, availableGuardians, onUnbind, onBind, setSelectedGuardian }) => {
+    if (!show) return null;
+
+    return (
+        <div className="modal fade show d-block" tabIndex="-1">
+            <div className="modal-dialog">
+                <div className="modal-content">
+                    <div className="modal-header">
+                        <h5 className="modal-title">Manage Guardians for {user.email}</h5>
+                        <button type="button" className="btn-close" onClick={onHide}></button>
+                    </div>
+                    <div className="modal-body">
+                        <h6>Bound Guardians</h6>
+                        {guardians.length > 0 ? (
+                            <ul className="list-group mb-3">
+                                {guardians.map(g => (
+                                    <li key={g.guardian_id} className="list-group-item d-flex justify-content-between align-items-center">
+                                        {g.guardian_email}
+                                        <button className="btn btn-danger btn-sm" onClick={() => onUnbind(g.guardian_id)}>Unbind</button>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p>No guardians are currently bound to this user.</p>
+                        )}
+
+                        <hr />
+
+                        <h6>Bind New Guardian</h6>
+                        <div className="input-group">
+                            <select className="form-select" onChange={(e) => setSelectedGuardian(e.target.value)}>
+                                <option value="">Select a Guardian</option>
+                                {availableGuardians.map(g => (
+                                    <option key={g.user_id} value={g.user_id}>{g.email}</option>
+                                ))}
+                            </select>
+                            <button className="btn btn-primary" onClick={onBind}>Bind Guardian</button>
+                        </div>
+                    </div>
+                    <div className="modal-footer">
+                        <button className="btn btn-secondary" onClick={onHide}>Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+

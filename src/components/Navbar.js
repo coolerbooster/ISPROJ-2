@@ -52,6 +52,13 @@ export default function Navbar() {
                         User Management
                     </span>
                     <span
+                        onClick={() => router.push('/guardian-list')}
+                        className={`nav-link fs-6 ${router.pathname === '/guardian-list' ? 'fw-bold text-primary' : 'text-dark'}`}
+                        style={{ cursor: 'pointer' }}
+                    >
+                        Guardian List
+                    </span>
+                    <span
                         onClick={() => router.push('/admin-management')}
                         className={`nav-link fs-6 ${router.pathname === '/admin-management' ? 'fw-bold text-primary' : 'text-dark'}`}
                         style={{ cursor: 'pointer' }}

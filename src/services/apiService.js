@@ -1,4 +1,4 @@
-const BASE_URL = 'https://isproj2.ingen.com.ph';
+const BASE_URL = 'http://192.168.68.111:3001';
 const LS_KEY = 'jwt_token';
 
 function getToken() {
@@ -125,6 +125,14 @@ export function generateReport(date) {
     return request('GET', `/api/admin/report?date=${date}`, null, true);
 }
 
+export function listGuardians() {
+    return request('GET', '/api/admin/guardians', null, true);
+}
+
+export function getGuardianBoundUsers(guardianId) {
+    return request('GET', `/api/admin/guardians/${guardianId}/bound-users`, null, true);
+}
+
 
 export function getAuditTrail(startDate, endDate) {
     if (!startDate || !endDate) {
@@ -144,6 +152,13 @@ export function getUserLogs(userId) {
     return request('GET', `/api/admin/users/${userId}/logs`, null, true);
 }
 
+export function getConversationHistory(conversationId) {
+    return request('GET', `/api/admin/conversations/${conversationId}/history`, null, true);
+}
+
+export function getUserGuardians(userId) {
+    return request('GET', `/api/users/${userId}/guardians`, null, true);
+}
 
 export async function getImageByConversationId(conversationId) {
     const res = await fetch(`${BASE_URL}/api/admin/scans/${conversationId}/images`, {

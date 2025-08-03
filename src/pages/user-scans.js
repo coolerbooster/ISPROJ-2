@@ -4,12 +4,11 @@ import $ from "jquery";
 import {
     getUserScansAdmin,
     deleteScanAdmin,
-    getImageByConversationId
+    getImageByConversationId,
+    getConversationHistory
 } from "../services/apiService";
 import Navbar from "../components/Navbar";
 import { shortenId } from "../utils/stringUtils";
-
-const BASE_URL = "https://isproj2.ingen.com.ph"; // Update if needed
 
 export default function UserScans() {
     const router = useRouter();
@@ -91,13 +90,7 @@ export default function UserScans() {
         setShowModal(true);
         setLoadingMessages(true);
         try {
-            const res = await fetch(`${BASE_URL}/api/admin/conversations/${conversationId}/history`, {
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${localStorage.getItem("jwt_token")}`,
-                },
-            });
-            const data = await res.json();
+            const data = await getConversationHistory(conversationId);
             setConversationMessages(data.messages || []);
         } catch (err) {
             console.error("Failed to load conversation:", err);

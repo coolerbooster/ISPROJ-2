@@ -18,7 +18,7 @@ export default function Dashboard() {
     const [users, setUsers] = useState([]);
     const [userStats, setUserStats] = useState({ total: 0, free: 0, premium: 0, guardian: 0 });
     const [signupData, setSignupData] = useState([]);
-    const [onlineCount, setOnlineCount] = useState(0);
+    const [recentlyLoggedInCount, setRecentlyLoggedInCount] = useState(0);
 
     useEffect(() => {
         if (!AuthController.isAuthenticated()) {
@@ -29,8 +29,8 @@ export default function Dashboard() {
         async function fetchData() {
             try {
                 const dash = await getAdminDashboard();
-                const od = dash.data?.onlineUsers ?? dash.onlineUsers ?? 0;
-                setOnlineCount(od);
+                const recentlyLoggedIn = dash.data?.recentlyLoggedInUsers ?? dash.recentlyLoggedInUsers ?? 0;
+                setRecentlyLoggedInCount(recentlyLoggedIn);
 
                 const rawSignups = dash.newSignupsLast7Days || dash.data?.newSignupsLast7Days || [];
 
@@ -193,8 +193,8 @@ export default function Dashboard() {
                 <div className="row g-3 mb-4">
                     <div className="col-6 col-md-3">
                         <div className="stat-card green text-center">
-                            <div className="stat-number">{onlineCount}</div>
-                            <div className="stat-label">Online Users</div>
+                            <div className="stat-number">{recentlyLoggedInCount}</div>
+                            <div className="stat-label">Recently Logged In Users</div>
                         </div>
                     </div>
                     <div className="col-6 col-md-3">
