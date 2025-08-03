@@ -6,6 +6,7 @@ import {
     getImageByConversationId
 } from "../services/apiService";
 import Navbar from "../components/Navbar";
+import { shortenId } from "../utils/stringUtils";
 
 const BASE_URL = "https://isproj2.ingen.com.ph"; // Update if needed
 
@@ -142,7 +143,7 @@ export default function UserScans() {
                                     const scanId = scan.scanId || scan.conversationId || idx;
                                     return (
                                         <tr key={scanId}>
-                                            <td>{scanId}</td>
+                                            <td>{shortenId(scanId)}</td>
                                             <td>
                                                 {scan.name ||
                                                     scan.first_user_message?.slice(0, 30) ||

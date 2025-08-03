@@ -8,6 +8,7 @@ import {
     updateUserAdmin,
     getUserScansAdmin
 } from "../services/apiService";
+import { shortenId } from "../utils/stringUtils";
 
 export default function UserManagement() {
     const [allUsers, setAllUsers] = useState([]);
@@ -194,7 +195,7 @@ export default function UserManagement() {
 
                             return (
                                 <tr key={u.user_id}>
-                                    <td>...{String(u.user_id).slice(-5)}</td>
+                                    <td>{shortenId(u.user_id)}</td>
                                     <td>{u.email}</td>
                                     <td>{u.userType}</td>
                                     <td>{u.subscriptionType === "Premium" ? "Yes" : "No"}</td>

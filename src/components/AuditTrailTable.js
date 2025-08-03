@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getAuditTrail } from '../services/apiService';
+import { shortenId } from '../utils/stringUtils';
 
 export default function AuditTrailTable() {
     const [logs, setLogs] = useState([]);
@@ -46,7 +47,7 @@ export default function AuditTrailTable() {
                         logs.map((log, index) => (
                             <tr key={index}>
                                 <td>{log.method || '-'}</td>
-                                <td>{log.changed_by || '-'}</td>
+                                <td>{shortenId(log.changed_by) || '-'}</td>
                                 <td>{log.endpoint || '-'}</td>
                                 <td>{log.changedAt ? new Date(log.changedAt).toLocaleDateString() : '-'}</td>
                             </tr>
