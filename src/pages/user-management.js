@@ -268,18 +268,11 @@ export default function UserManagement() {
                             <th>Account Type</th>
                             <th>Premium</th>
                             <th>Scan Count</th>
-                            <th>Guardian Access</th>
                             <th>Actions</th>
                         </tr>
                         </thead>
                         <tbody>
                         {filteredUsers.map((u) => {
-                            const guardianAccess =
-                                u.subscriptionType === "Premium" &&
-                                (u.guardianModeAccess ?? u.guardianMode)
-                                    ? "Yes"
-                                    : "No";
-
                             return (
                                 <React.Fragment key={u.user_id}>
                                     <tr>
@@ -288,7 +281,6 @@ export default function UserManagement() {
                                         <td>{u.userType}</td>
                                         <td>{u.subscriptionType === "Premium" ? "Yes" : "No"}</td>
                                         <td>{u.scanCount !== undefined ? u.scanCount : "-"}</td>
-                                        <td>{guardianAccess}</td>
                                         <td>
                                             <div className="d-flex justify-content-center gap-1">
                                                 <button
@@ -329,7 +321,7 @@ export default function UserManagement() {
                         })}
                         {filteredUsers.length === 0 && (
                             <tr>
-                                <td colSpan={7} className="text-center">No users found.</td>
+                                <td colSpan={6} className="text-center">No users found.</td>
                             </tr>
                         )}
                         </tbody>
