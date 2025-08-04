@@ -14,6 +14,7 @@ import {
     listGuardians
 } from "../services/apiService";
 import { shortenId } from "../utils/stringUtils";
+import UserLogsModal from "../components/UserLogsModal";
 
 export default function UserManagement() {
     const [allUsers, setAllUsers] = useState([]);
@@ -37,6 +38,8 @@ export default function UserManagement() {
     const [selectedGuardian, setSelectedGuardian] = useState('');
     const [showViewGuardiansModal, setShowViewGuardiansModal] = useState(false);
     const [viewingUser, setViewingUser] = useState(null);
+    const [showUserLogsModal, setShowUserLogsModal] = useState(false);
+    const [viewingUserLogs, setViewingUserLogs] = useState(null);
 
     const router = useRouter();
 
@@ -170,13 +173,8 @@ export default function UserManagement() {
     }
 
     const handleViewLogs = (user) => {
-        router.push({
-            pathname: '/user-logs',
-            query: {
-                userId: user.user_id || user._id,
-                email: user.email || ''
-            }
-        });
+        setViewingUserLogs(user);
+        setShowUserLogsModal(true);
     };
 
     const handleManageGuardians = async (user) => {
@@ -426,6 +424,12 @@ export default function UserManagement() {
                 show={showViewGuardiansModal}
                 onHide={() => setShowViewGuardiansModal(false)}
                 user={viewingUser}
+            />
+
+            <UserLogsModal
+                show={showUserLogsModal}
+                onHide={() => setShowUserLogsModal(false)}
+                user={viewingUserLogs}
             />
         </>
     );

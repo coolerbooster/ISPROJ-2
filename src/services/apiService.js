@@ -164,9 +164,6 @@ export function getAuditTrail(startDate, endDate, search = '') {
 }
 
 
-export function getUserLogs(userId) {
-    return request('GET', `/api/admin/users/${userId}/logs`, null, true);
-}
 
 export function getConversationHistory(conversationId) {
     return request('GET', `/api/admin/conversations/${conversationId}/history`, null, true);
@@ -201,5 +198,6 @@ export async function getImageByConversationId(conversationId) {
     return { image: base64 };
 }
 
-
-
+export function getUserActivityAdmin(userId) {
+    return request('GET', `/api/admin/users/${userId}/activity`, null, true);
+}
