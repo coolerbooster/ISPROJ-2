@@ -18,7 +18,8 @@ export default function AuditTrailTable() {
         }
         try {
             setError(null);
-            const data = await getAuditTrail(startDate, endDate, searchTerm);
+            const data = await getAuditTrail(startDate, endDate, searchTerm || '');
+            console.log('Audit trail data from API:', data);
             setLogs(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error('Failed to fetch audit trail:', err);
@@ -45,11 +46,17 @@ export default function AuditTrailTable() {
         }
     }, [startDate, endDate]);
 
-    // Initialize DataTable only once when the component mounts
     useEffect(() => {
+        // Destroy previous instance if it exists
+        if ($.fn.DataTable.isDataTable(tableRef.current)) {
+            $(tableRef.current).DataTable().destroy();
+        }
+
+        // Initialize DataTable with data
         const table = $(tableRef.current).DataTable({
+            data: logs,
             columns: [
-                { data: 'changedAt', title: 'Date & Time', render: (data) => new Date(data).toLocaleString() },
+                { data: 'changedAt', title: 'Date & Time', render: (data) => new Date(data).toLocaleString('en-US', { timeZone: 'Asia/Manila' }) },
                 { data: 'user_email', title: 'User', render: (data, type, row) => data || (row.changed_by ? `ID: ${shortenId(row.changed_by)}` : 'N/A') },
                 { data: 'action', title: 'Action Description' },
                 { data: 'status', title: 'Status', render: (data) => `<span class="badge ${data === 'SUCCESS' ? 'bg-success' : 'bg-danger'}">${data}</span>` },
@@ -57,25 +64,14 @@ export default function AuditTrailTable() {
                 { data: 'user_agent', title: 'Device', render: (data) => data ? (data.includes('Mobi') ? 'Mobile' : 'Desktop') : '-' }
             ],
             order: [[0, 'desc']],
-            destroy: true, // This is still useful for the initial cleanup
+            destroy: true,
         });
 
-        // Return a cleanup function to destroy the DataTable when the component unmounts
         return () => {
             if ($.fn.DataTable.isDataTable(tableRef.current)) {
                 table.destroy();
             }
         };
-    }, []); // Empty dependency array ensures this runs only once
-
-    // Update table data when logs change
-    useEffect(() => {
-        const table = $(tableRef.current).DataTable();
-        table.clear();
-        if (logs.length > 0) {
-            table.rows.add(logs);
-        }
-        table.draw();
     }, [logs]);
 
     return (

@@ -11,10 +11,11 @@ import {
     getUserGuardians,
     unbindGuardian,
     bindGuardian,
-    listGuardians
+    listGuardians,
+    getUserLogsAdmin
 } from "../services/apiService";
 import { shortenId } from "../utils/stringUtils";
-import UserLogsModal from "../components/UserLogsModal";
+import UserLogsModal from '../components/UserLogsModal';
 
 export default function UserManagement() {
     const [allUsers, setAllUsers] = useState([]);
@@ -40,12 +41,29 @@ export default function UserManagement() {
     const [viewingUser, setViewingUser] = useState(null);
     const [showUserLogsModal, setShowUserLogsModal] = useState(false);
     const [viewingUserLogs, setViewingUserLogs] = useState(null);
+    const [userLogs, setUserLogs] = useState([]);
 
     const router = useRouter();
 
     useEffect(() => {
         fetchUsers();
     }, [searchTerm]);
+
+    useEffect(() => {
+        if (viewingUserLogs) {
+            const fetchLogs = async () => {
+                try {
+                    // Assuming you have a function to get user logs
+                    const logs = await getUserLogsAdmin(viewingUserLogs.user_id);
+                    setUserLogs(logs);
+                } catch (error) {
+                    console.error("Failed to fetch user logs", error);
+                    setUserLogs([]);
+                }
+            };
+            fetchLogs();
+        }
+    }, [viewingUserLogs]);
 
     const [filteredUsers, setFilteredUsers] = useState([]);
 
@@ -427,9 +445,9 @@ export default function UserManagement() {
             />
 
             <UserLogsModal
-                show={showUserLogsModal}
-                onHide={() => setShowUserLogsModal(false)}
-                user={viewingUserLogs}
+                isOpen={showUserLogsModal}
+                onRequestClose={() => setShowUserLogsModal(false)}
+                logs={userLogs}
             />
         </>
     );
