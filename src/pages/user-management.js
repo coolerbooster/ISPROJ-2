@@ -53,9 +53,12 @@ export default function UserManagement() {
         if (viewingUserLogs) {
             const fetchLogs = async () => {
                 try {
-                    // Assuming you have a function to get user logs
                     const logs = await getUserLogsAdmin(viewingUserLogs.user_id);
-                    setUserLogs(logs);
+                    const formattedLogs = logs.map(log => ({
+                        ...log,
+                        timestamp: log.changedAt
+                    }));
+                    setUserLogs(formattedLogs);
                 } catch (error) {
                     console.error("Failed to fetch user logs", error);
                     setUserLogs([]);
