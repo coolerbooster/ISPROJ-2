@@ -63,7 +63,7 @@ export default function AuditTrailTable() {
         },
         {
             accessorKey: 'changed_by',
-            header: 'Changed By',
+            header: 'User',
             cell: info => info.getValue()
         },
         {
