@@ -11,6 +11,8 @@ import {
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { shortenId } from '../utils/stringUtils';
+import styles from '../styles/AuditTrailTable.module.css';
+import filterStyles from '../styles/AuditTrailFilters.module.css';
 
 export default function AuditTrailTable() {
     const [logs, setLogs] = useState([]);
@@ -65,16 +67,17 @@ export default function AuditTrailTable() {
             cell: info => shortenId(info.getValue())
         },
         {
-            accessorKey: 'user_email',
-            header: 'User Email'
-        },
-        {
             accessorKey: 'action',
             header: 'Action'
         },
         {
             accessorKey: 'status',
-            header: 'Status'
+            header: 'Status',
+            cell: ({ getValue }) => {
+                const status = getValue();
+                const statusClass = status === 'success' ? styles.statusSuccess : styles.statusFail;
+                return <span className={`${styles.status} ${statusClass}`}>{status}</span>;
+            }
         },
         {
             accessorKey: 'ip_address',
@@ -111,50 +114,62 @@ export default function AuditTrailTable() {
 
             {error && <div className="alert alert-danger">{error}</div>}
 
-            <div className="d-flex justify-content-between mb-3">
-                <div className="d-flex align-items-center">
-                    <label className="me-2">Start Date:</label>
+            <div className={filterStyles.filterControls}>
+                <div className={filterStyles.filterGroup}>
+                    <label htmlFor="startDate" className={filterStyles.filterLabel}>Start Date:</label>
                     <DatePicker
+                        id="startDate"
                         selected={startDate}
                         onChange={(date) => setStartDate(date)}
-                        className="form-control"
+                        className={filterStyles.datePicker}
                         dateFormat="MM/dd/yyyy"
+                        aria-label="Start Date"
                     />
-                    <label className="mx-2">End Date:</label>
+                </div>
+                <div className={filterStyles.filterGroup}>
+                    <label htmlFor="endDate" className={filterStyles.filterLabel}>End Date:</label>
                     <DatePicker
+                        id="endDate"
                         selected={endDate}
                         onChange={(date) => setEndDate(date)}
-                        className="form-control"
+                        className={filterStyles.datePicker}
                         dateFormat="MM/dd/yyyy"
+                        aria-label="End Date"
                     />
-                    <label className="ms-3 me-2">Show</label>
+                </div>
+                <div className={filterStyles.filterGroup}>
+                    <label htmlFor="pageSize" className={filterStyles.filterLabel}>Show</label>
                     <select
-                        className="form-select"
+                        id="pageSize"
+                        className={filterStyles.select}
                         value={table.getState().pagination.pageSize}
                         onChange={e => table.setPageSize(Number(e.target.value))}
+                        aria-label="Page size"
                     >
                         {[10, 25, 50, 100].map(size => (
                             <option key={size} value={size}>{size}</option>
                         ))}
                     </select>
-                    <span className="ms-2">entries</span>
+                    <span className={filterStyles.filterLabel}>entries</span>
                 </div>
-                <div className="d-flex align-items-center">
-                    <label className="me-2">Search:</label>
+                <div className={filterStyles.filterGroup}>
+                    <label htmlFor="search" className={filterStyles.filterLabel}>Search:</label>
                     <input
+                        id="search"
                         type="text"
-                        className="form-control"
+                        className={filterStyles.input}
                         value={globalFilter}
                         onChange={e => setGlobalFilter(e.target.value)}
                         placeholder={`${logs.length} records...`}
+                        aria-label="Search logs"
                     />
-                    <button className="btn btn-primary ms-2" onClick={fetchAuditTrail}>Search</button>
                 </div>
+                <button className={filterStyles.searchButton} onClick={fetchAuditTrail}>Filter</button>
             </div>
 
             <div className="table-responsive">
-                <table className="table table-bordered table-striped">
-                    <thead className="table-light">
+                <table className={styles.table}>
+                    <thead>
                     {table.getHeaderGroups().map(headerGroup => (
                         <tr key={headerGroup.id}>
                             {headerGroup.headers.map(header => (
