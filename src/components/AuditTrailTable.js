@@ -64,7 +64,7 @@ export default function AuditTrailTable() {
         {
             accessorKey: 'changed_by',
             header: 'Changed By',
-            cell: info => shortenId(info.getValue())
+            cell: info => info.getValue()
         },
         {
             accessorKey: 'action',
@@ -86,11 +86,11 @@ export default function AuditTrailTable() {
         {
             accessorKey: 'user_agent',
             header: 'User Agent'
-        },
-        {
-            accessorKey: 'request_body',
-            header: 'Request Body'
         }
+        // {
+        //     accessorKey: 'request_body',
+        //     header: 'Request Body'
+        // }
     ], []);
 
     const table = useReactTable({
