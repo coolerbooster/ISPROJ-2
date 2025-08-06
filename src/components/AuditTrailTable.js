@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getAuditTrail } from '../services/apiService';
-import { shortenId } from '../utils/stringUtils';
 import {
     useReactTable,
     getCoreRowModel,
@@ -9,33 +8,28 @@ import {
     getFilteredRowModel,
     flexRender
 } from '@tanstack/react-table';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { shortenId } from '../utils/stringUtils';
 
 export default function AuditTrailTable() {
     const [logs, setLogs] = useState([]);
     const [error, setError] = useState(null);
-    const [startDate, setStartDate] = useState('');
-    const [endDate, setEndDate] = useState('');
-    const [searchTerm, setSearchTerm] = useState('');
     const [sorting, setSorting] = useState([]);
     const [globalFilter, setGlobalFilter] = useState('');
-
-    const todayISO = (() => {
-        const d = new Date();
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    })();
+    const [startDate, setStartDate] = useState(new Date(new Date().setDate(new Date().getDate() - 7)));
+    const [endDate, setEndDate] = useState(new Date());
 
     const fetchAuditTrail = async () => {
         if (!startDate || !endDate) {
             setError('Please select both a start and end date.');
             return;
         }
-
         try {
             setError(null);
-            const data = await getAuditTrail(startDate, endDate, searchTerm);
+            const adjustedEndDate = new Date(endDate);
+            adjustedEndDate.setDate(adjustedEndDate.getDate() + 1);
+            const data = await getAuditTrail(startDate.toISOString(), adjustedEndDate.toISOString(), globalFilter);
             setLogs(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error('Failed to fetch audit trail:', err);
@@ -43,61 +37,44 @@ export default function AuditTrailTable() {
         }
     };
 
-    const handleSearch = () => {
+    useEffect(() => {
         fetchAuditTrail();
-    };
-
-    useEffect(() => {
-        const toYYYYMMDD = (d) => {
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        };
-        const today = new Date();
-        const sevenDaysAgo = new Date(today);
-        sevenDaysAgo.setDate(today.getDate() - 7);
-        setStartDate(toYYYYMMDD(sevenDaysAgo));
-        setEndDate(toYYYYMMDD(today));
     }, []);
-
-    useEffect(() => {
-        if (startDate && endDate) {
-            fetchAuditTrail();
-        }
-    }, [startDate, endDate]);
 
     const columns = useMemo(() => [
         {
+            accessorKey: 'audit_id',
+            header: 'Audit ID',
+            cell: info => shortenId(info.getValue())
+        },
+        {
             accessorKey: 'changedAt',
-            header: 'Date & Time',
-            cell: info =>
-                new Date(info.getValue()).toLocaleString('en-US', {
-                    timeZone: 'Asia/Manila'
-                })
+            header: 'Timestamp',
+            cell: info => new Date(info.getValue()).toLocaleString('en-US', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            })
+        },
+        {
+            accessorKey: 'changed_by',
+            header: 'Changed By',
+            cell: info => shortenId(info.getValue())
         },
         {
             accessorKey: 'user_email',
-            header: 'User',
-            cell: ({ row }) =>
-                row.original.user_email || (row.original.changed_by
-                    ? `ID: ${shortenId(row.original.changed_by)}`
-                    : 'N/A')
+            header: 'User Email'
         },
         {
             accessorKey: 'action',
-            header: 'Action Description'
+            header: 'Action'
         },
         {
             accessorKey: 'status',
-            header: 'Status',
-            cell: info => (
-                <span
-                    className={`badge ${info.getValue() === 'SUCCESS' ? 'bg-success' : 'bg-danger'}`}
-                >
-                    {info.getValue()}
-                </span>
-            )
+            header: 'Status'
         },
         {
             accessorKey: 'ip_address',
@@ -105,11 +82,11 @@ export default function AuditTrailTable() {
         },
         {
             accessorKey: 'user_agent',
-            header: 'Device',
-            cell: info => {
-                const val = info.getValue();
-                return val ? (val.includes('Mobi') ? 'Mobile' : 'Desktop') : '-';
-            }
+            header: 'User Agent'
+        },
+        {
+            accessorKey: 'request_body',
+            header: 'Request Body'
         }
     ], []);
 
@@ -134,48 +111,23 @@ export default function AuditTrailTable() {
 
             {error && <div className="alert alert-danger">{error}</div>}
 
-            <div className="row mb-3">
-                <div className="col-md-3">
-                    <label>Start Date</label>
-                    <input
-                        type="date"
-                        className="form-control"
-                        value={startDate}
-                        onChange={e => setStartDate(e.target.value)}
-                        max={todayISO}
-                    />
-                </div>
-                <div className="col-md-3">
-                    <label>End Date</label>
-                    <input
-                        type="date"
-                        className="form-control"
-                        value={endDate}
-                        onChange={e => setEndDate(e.target.value)}
-                        max={todayISO}
-                    />
-                </div>
-                <div className="col-md-4">
-                    <label>Search</label>
-                    <input
-                        type="text"
-                        className="form-control"
-                        placeholder="Search by user, action, or IP"
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                        onKeyPress={e => e.key === 'Enter' && handleSearch()}
-                    />
-                </div>
-                <div className="col-md-2 d-flex align-items-end">
-                    <button className="btn btn-primary w-100" onClick={handleSearch}>
-                        Filter
-                    </button>
-                </div>
-            </div>
-
             <div className="d-flex justify-content-between mb-3">
                 <div className="d-flex align-items-center">
-                    <label className="me-2">Show</label>
+                    <label className="me-2">Start Date:</label>
+                    <DatePicker
+                        selected={startDate}
+                        onChange={(date) => setStartDate(date)}
+                        className="form-control"
+                        dateFormat="MM/dd/yyyy"
+                    />
+                    <label className="mx-2">End Date:</label>
+                    <DatePicker
+                        selected={endDate}
+                        onChange={(date) => setEndDate(date)}
+                        className="form-control"
+                        dateFormat="MM/dd/yyyy"
+                    />
+                    <label className="ms-3 me-2">Show</label>
                     <select
                         className="form-select"
                         value={table.getState().pagination.pageSize}
@@ -196,6 +148,7 @@ export default function AuditTrailTable() {
                         onChange={e => setGlobalFilter(e.target.value)}
                         placeholder={`${logs.length} records...`}
                     />
+                    <button className="btn btn-primary ms-2" onClick={fetchAuditTrail}>Search</button>
                 </div>
             </div>
 
