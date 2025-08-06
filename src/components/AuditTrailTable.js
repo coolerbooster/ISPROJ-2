@@ -10,6 +10,41 @@ import {
     flexRender
 } from '@tanstack/react-table';
 
+// Helper to parse UTC timestamp string and format as Philippines local time in 12-hour format
+const formatPHDateTime = (value) => {
+    if (!value) {
+        return '';
+    }
+
+    const date = new Date(value);
+
+    // Check if the created date is valid before attempting to format it.
+    if (isNaN(date.getTime())) {
+        // Fallback for date strings with a space instead of a 'T' separator.
+        const isoString = value.replace(' ', 'T') + 'Z';
+        const fallbackDate = new Date(isoString);
+        if (isNaN(fallbackDate.getTime())) {
+            console.error('Invalid date value received:', value);
+            return 'Invalid Date';
+        }
+        return fallbackDate.toLocaleString('en-PH', {
+            timeZone: 'Asia/Manila', hour12: true, year: 'numeric', month: '2-digit',
+            day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'
+        });
+    }
+
+    return date.toLocaleString('en-PH', {
+        timeZone: 'Asia/Manila',
+        hour12: true,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+};
+
 export default function AuditTrailTable() {
     const [logs, setLogs] = useState([]);
     const [error, setError] = useState(null);
@@ -21,6 +56,15 @@ export default function AuditTrailTable() {
 
     const todayISO = (() => {
         const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    })();
+
+    const tomorrowISO = (() => {
+        const d = new Date();
+        d.setDate(d.getDate() + 1);
         const year = d.getFullYear();
         const month = String(d.getMonth() + 1).padStart(2, '0');
         const day = String(d.getDate()).padStart(2, '0');
@@ -55,10 +99,13 @@ export default function AuditTrailTable() {
             return `${year}-${month}-${day}`;
         };
         const today = new Date();
+        const tomorrow = new Date();
+        tomorrow.setDate(today.getDate() + 1);
         const sevenDaysAgo = new Date(today);
         sevenDaysAgo.setDate(today.getDate() - 7);
+
         setStartDate(toYYYYMMDD(sevenDaysAgo));
-        setEndDate(toYYYYMMDD(today));
+        setEndDate(toYYYYMMDD(tomorrow));
     }, []);
 
     useEffect(() => {
@@ -71,10 +118,7 @@ export default function AuditTrailTable() {
         {
             accessorKey: 'changedAt',
             header: 'Date & Time',
-            cell: info =>
-                new Date(info.getValue()).toLocaleString('en-US', {
-                    timeZone: 'Asia/Manila'
-                })
+            cell: info => formatPHDateTime(info.getValue())
         },
         {
             accessorKey: 'user_email',
@@ -152,7 +196,7 @@ export default function AuditTrailTable() {
                         className="form-control"
                         value={endDate}
                         onChange={e => setEndDate(e.target.value)}
-                        max={todayISO}
+                        max={tomorrowISO}
                     />
                 </div>
                 <div className="col-md-4">
