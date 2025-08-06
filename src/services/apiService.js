@@ -1,4 +1,4 @@
-const BASE_URL = 'http://192.168.68.111:3001';
+const BASE_URL = 'http://192.168.254.104:3001';
 const LS_KEY = 'jwt_token';
 
 function getToken() {
@@ -19,20 +19,22 @@ async function request(method, path, body = null, auth = false) {
     if (body !== null) opts.body = JSON.stringify(body);
 
     const res = await fetch(BASE_URL + path, opts);
-    if (res.status === 404) {
-        console.warn(`Resource not found at ${path}. Returning empty array.`);
-        return [];
-    }
-    if (res.status === 401) {
-       // Token is invalid or expired
-       localStorage.removeItem(LS_KEY); // Clear bad token
-       window.location.href = '/'; // Redirect to login
-       return Promise.reject(new Error("Invalid or expired token"));
-    }
+
+    // Try to parse response
     const data = await res.json().catch(() => ({}));
+
+    // If token-based route and unauthorized, redirect
+    if (auth && res.status === 401) {
+        localStorage.removeItem(LS_KEY);
+        window.location.href = '/';
+        return Promise.reject(new Error("Invalid or expired token"));
+    }
+
+    // Handle other errors
     if (!res.ok) {
         throw new Error(data.error || data.message || `HTTP ${res.status}`);
     }
+
     return data;
 }
 

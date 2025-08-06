@@ -80,8 +80,15 @@ export default function Dashboard() {
             if ($.fn.DataTable.isDataTable("#dashboardTable")) {
                 $("#dashboardTable").DataTable().destroy();
             }
-            $("#dashboardTable").DataTable();
+
+            $("#dashboardTable").DataTable({
+                paging: false,
+                info: false,
+                searching: false,
+                lengthChange: false
+            });
         }
+
         return () => {
             if ($.fn.DataTable.isDataTable("#dashboardTable")) {
                 $("#dashboardTable").DataTable().destroy();
@@ -267,9 +274,7 @@ export default function Dashboard() {
                                     <th>ID</th>
                                     <th>Email</th>
                                     <th>Account Type</th>
-                                    <th>Premium</th>
                                     <th>Scan Count</th>
-                                    <th>Guardian Mode</th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -285,9 +290,7 @@ export default function Dashboard() {
                                             <td>{u.user_id}</td>
                                             <td>{u.email}</td>
                                             <td>{u.userType}</td>
-                                            <td>{u.subscriptionType === 'Premium' ? 'Yes' : 'No'}</td>
                                             <td>{u.scanCount}</td>
-                                            <td>{guardianAccess}</td>
                                         </tr>
                                     );
                                 })}

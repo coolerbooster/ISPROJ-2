@@ -27,7 +27,10 @@ export default function GuardianList() {
                     return { ...guardian, boundUsers };
                 })
             );
-            setGuardians(guardiansWithBoundUsers);
+            const sortedGuardians = guardiansWithBoundUsers.sort(
+                (a, b) => (b.user_id > a.user_id ? 1 : -1)
+            );
+            setGuardians(sortedGuardians);
         } catch (error) {
             console.error('Error fetching guardians:', error);
         }
