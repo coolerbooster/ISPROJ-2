@@ -207,3 +207,15 @@ export async function getImageByConversationId(conversationId) {
 export function getUserActivityAdmin(userId) {
     return request('GET', `/api/admin/users/${userId}/activity`, null, true);
 }
+
+export function getUserTransactions(userId) {
+    return request('GET', `/api/admin/users/${userId}/transactions`, null, true);
+}
+
+export function makeUserPremium(userId) {
+    return request('PUT', `/api/admin/users/${userId}/make-premium`, null, true);
+}
+
+export function removeUserPremium(userId) {
+    return request('PUT', `/api/admin/users/${userId}/remove-premium`, null, true);
+}
