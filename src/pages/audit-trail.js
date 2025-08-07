@@ -7,7 +7,6 @@ export default function AuditTrailPage() {
         <div>
             <Navbar />
             <div className="container-fluid py-4">
-                <h3 className="mb-4">Audit Trail</h3>
                 <AuditTrailTable />
             </div>
         </div>

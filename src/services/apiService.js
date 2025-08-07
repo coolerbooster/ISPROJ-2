@@ -1,4 +1,4 @@
-const BASE_URL = 'http://192.168.254.104:3001';
+const BASE_URL = 'http://192.168.50.40:3001';
 const LS_KEY = 'jwt_token';
 
 function getToken() {
@@ -42,8 +42,12 @@ async function request(method, path, body = null, auth = false) {
 export function signup(email, password, accountType) {
     return request('POST', '/api/auth/signup', { email, password, accountType });
 }
-export function loginWithEmail(email, password) {
-    return request('POST', '/api/auth/login', { email, password });
+export async function loginWithEmail(email, password) {
+    const data = await request('POST', '/api/auth/login', { email, password });
+    if (data && data.token) {
+        localStorage.setItem(LS_KEY, data.token);
+    }
+    return data;
 }
 export function verifyOTP(email, codeValue) {
     return request('POST', '/api/auth/verify-login', { email, codeValue });
@@ -157,13 +161,14 @@ export function updateUser(userId, data) {
    return request('PUT', `/api/admin/users/${userId}`, data, true);
 }
 
-export function getAuditTrail(startDate, endDate, search = '') {
-    let path = `/api/admin/audit-trail?startDate=${startDate}&endDate=${endDate}`;
-    if (search) {
-        path += `&search=${encodeURIComponent(search)}`;
-    }
-    return request('GET', path, null, true);
+export function getAuditTrail(startDate, endDate, search) {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    if (search) params.append('search', search);
+    return request('GET', `/api/admin/audit-trail?${params.toString()}`, null, true);
 }
+
 
 
 export function getConversationHistory(conversationId) {
@@ -199,10 +204,18 @@ export async function getImageByConversationId(conversationId) {
     return { image: base64 };
 }
 
-export function getUserLogsAdmin(userId) {
-    return request('GET', `/api/admin/users/${userId}/logs`, null, true);
-}
-
 export function getUserActivityAdmin(userId) {
     return request('GET', `/api/admin/users/${userId}/activity`, null, true);
+}
+
+export function getUserTransactions(userId) {
+    return request('GET', `/api/admin/users/${userId}/transactions`, null, true);
+}
+
+export function makeUserPremium(userId) {
+    return request('PUT', `/api/admin/users/${userId}/make-premium`, null, true);
+}
+
+export function removeUserPremium(userId) {
+    return request('PUT', `/api/admin/users/${userId}/remove-premium`, null, true);
 }

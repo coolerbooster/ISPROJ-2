@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getAuditTrail } from '../services/apiService';
-import { shortenId } from '../utils/stringUtils';
 import {
     useReactTable,
     getCoreRowModel,
@@ -9,77 +8,30 @@ import {
     getFilteredRowModel,
     flexRender
 } from '@tanstack/react-table';
-
-// Helper to parse UTC timestamp string and format as Philippines local time in 12-hour format
-const formatPHDateTime = (value) => {
-    if (!value) {
-        return '';
-    }
-
-    const date = new Date(value);
-
-    // Check if the created date is valid before attempting to format it.
-    if (isNaN(date.getTime())) {
-        // Fallback for date strings with a space instead of a 'T' separator.
-        const isoString = value.replace(' ', 'T') + 'Z';
-        const fallbackDate = new Date(isoString);
-        if (isNaN(fallbackDate.getTime())) {
-            console.error('Invalid date value received:', value);
-            return 'Invalid Date';
-        }
-        return fallbackDate.toLocaleString('en-PH', {
-            timeZone: 'Asia/Manila', hour12: true, year: 'numeric', month: '2-digit',
-            day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'
-        });
-    }
-
-    return date.toLocaleString('en-PH', {
-        timeZone: 'Asia/Manila',
-        hour12: true,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-    });
-};
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { shortenId } from '../utils/stringUtils';
+import styles from '../styles/AuditTrailTable.module.css';
+import filterStyles from '../styles/AuditTrailFilters.module.css';
 
 export default function AuditTrailTable() {
     const [logs, setLogs] = useState([]);
     const [error, setError] = useState(null);
-    const [startDate, setStartDate] = useState('');
-    const [endDate, setEndDate] = useState('');
-    const [searchTerm, setSearchTerm] = useState('');
     const [sorting, setSorting] = useState([]);
     const [globalFilter, setGlobalFilter] = useState('');
-
-    const todayISO = (() => {
-        const d = new Date();
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    })();
-
-    const tomorrowISO = (() => {
-        const d = new Date();
-        d.setDate(d.getDate() + 1);
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    })();
+    const [startDate, setStartDate] = useState(new Date(new Date().setDate(new Date().getDate() - 7)));
+    const [endDate, setEndDate] = useState(new Date());
 
     const fetchAuditTrail = async () => {
         if (!startDate || !endDate) {
             setError('Please select both a start and end date.');
             return;
         }
-
         try {
             setError(null);
-            const data = await getAuditTrail(startDate, endDate, searchTerm);
+            const adjustedEndDate = new Date(endDate);
+            adjustedEndDate.setDate(adjustedEndDate.getDate() + 1);
+            const data = await getAuditTrail(startDate.toISOString(), adjustedEndDate.toISOString(), globalFilter);
             setLogs(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error('Failed to fetch audit trail:', err);
@@ -87,61 +39,45 @@ export default function AuditTrailTable() {
         }
     };
 
-    const handleSearch = () => {
+    useEffect(() => {
         fetchAuditTrail();
-    };
-
-    useEffect(() => {
-        const toYYYYMMDD = (d) => {
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        };
-        const today = new Date();
-        const tomorrow = new Date();
-        tomorrow.setDate(today.getDate() + 1);
-        const sevenDaysAgo = new Date(today);
-        sevenDaysAgo.setDate(today.getDate() - 7);
-
-        setStartDate(toYYYYMMDD(sevenDaysAgo));
-        setEndDate(toYYYYMMDD(tomorrow));
     }, []);
-
-    useEffect(() => {
-        if (startDate && endDate) {
-            fetchAuditTrail();
-        }
-    }, [startDate, endDate]);
 
     const columns = useMemo(() => [
         {
-            accessorKey: 'changedAt',
-            header: 'Date & Time',
-            cell: info => formatPHDateTime(info.getValue())
+            accessorKey: 'audit_id',
+            header: 'Audit ID',
+            cell: info => shortenId(info.getValue())
         },
         {
-            accessorKey: 'user_email',
+            accessorKey: 'changedAt',
+            header: 'Timestamp',
+            cell: info => new Date(info.getValue()).toLocaleString('en-US', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            })
+        },
+        {
+            accessorKey: 'changed_by',
             header: 'User',
-            cell: ({ row }) =>
-                row.original.user_email || (row.original.changed_by
-                    ? `ID: ${shortenId(row.original.changed_by)}`
-                    : 'N/A')
+            cell: info => info.getValue()
         },
         {
             accessorKey: 'action',
-            header: 'Action Description'
+            header: 'Action'
         },
         {
             accessorKey: 'status',
             header: 'Status',
-            cell: info => (
-                <span
-                    className={`badge ${info.getValue() === 'SUCCESS' ? 'bg-success' : 'bg-danger'}`}
-                >
-                    {info.getValue()}
-                </span>
-            )
+            cell: ({ getValue }) => {
+                const status = getValue();
+                const statusClass = status === 'success' ? styles.statusSuccess : styles.statusFail;
+                return <span className={`${styles.status} ${statusClass}`}>{status}</span>;
+            }
         },
         {
             accessorKey: 'ip_address',
@@ -149,12 +85,12 @@ export default function AuditTrailTable() {
         },
         {
             accessorKey: 'user_agent',
-            header: 'Device',
-            cell: info => {
-                const val = info.getValue();
-                return val ? (val.includes('Mobi') ? 'Mobile' : 'Desktop') : '-';
-            }
+            header: 'User Agent'
         }
+        // {
+        //     accessorKey: 'request_body',
+        //     header: 'Request Body'
+        // }
     ], []);
 
     const table = useReactTable({
@@ -178,74 +114,62 @@ export default function AuditTrailTable() {
 
             {error && <div className="alert alert-danger">{error}</div>}
 
-            <div className="row mb-3">
-                <div className="col-md-3">
-                    <label>Start Date</label>
-                    <input
-                        type="date"
-                        className="form-control"
-                        value={startDate}
-                        onChange={e => setStartDate(e.target.value)}
-                        max={todayISO}
+            <div className={filterStyles.filterControls}>
+                <div className={filterStyles.filterGroup}>
+                    <label htmlFor="startDate" className={filterStyles.filterLabel}>Start Date:</label>
+                    <DatePicker
+                        id="startDate"
+                        selected={startDate}
+                        onChange={(date) => setStartDate(date)}
+                        className={filterStyles.datePicker}
+                        dateFormat="MM/dd/yyyy"
+                        aria-label="Start Date"
                     />
                 </div>
-                <div className="col-md-3">
-                    <label>End Date</label>
-                    <input
-                        type="date"
-                        className="form-control"
-                        value={endDate}
-                        onChange={e => setEndDate(e.target.value)}
-                        max={tomorrowISO}
+                <div className={filterStyles.filterGroup}>
+                    <label htmlFor="endDate" className={filterStyles.filterLabel}>End Date:</label>
+                    <DatePicker
+                        id="endDate"
+                        selected={endDate}
+                        onChange={(date) => setEndDate(date)}
+                        className={filterStyles.datePicker}
+                        dateFormat="MM/dd/yyyy"
+                        aria-label="End Date"
                     />
                 </div>
-                <div className="col-md-4">
-                    <label>Search</label>
-                    <input
-                        type="text"
-                        className="form-control"
-                        placeholder="Search by user, action, or IP"
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                        onKeyPress={e => e.key === 'Enter' && handleSearch()}
-                    />
-                </div>
-                <div className="col-md-2 d-flex align-items-end">
-                    <button className="btn btn-primary w-100" onClick={handleSearch}>
-                        Filter
-                    </button>
-                </div>
-            </div>
-
-            <div className="d-flex justify-content-between mb-3">
-                <div className="d-flex align-items-center">
-                    <label className="me-2">Show</label>
+                <div className={filterStyles.filterGroup}>
+                    <label htmlFor="pageSize" className={filterStyles.filterLabel}>Show</label>
                     <select
-                        className="form-select"
+                        id="pageSize"
+                        className={filterStyles.select}
                         value={table.getState().pagination.pageSize}
                         onChange={e => table.setPageSize(Number(e.target.value))}
+                        aria-label="Page size"
                     >
                         {[10, 25, 50, 100].map(size => (
                             <option key={size} value={size}>{size}</option>
                         ))}
                     </select>
-                    <span className="ms-2">entries</span>
+                    <span className={filterStyles.filterLabel}>entries</span>
                 </div>
-                <div className="d-flex align-items-center">
-                    <label className="me-2">Search:</label>
+                <div className={filterStyles.filterGroup}>
+                    <label htmlFor="search" className={filterStyles.filterLabel}>Search:</label>
                     <input
+                        id="search"
                         type="text"
-                        className="form-control"
+                        className={filterStyles.input}
                         value={globalFilter}
                         onChange={e => setGlobalFilter(e.target.value)}
                         placeholder={`${logs.length} records...`}
+                        aria-label="Search logs"
                     />
                 </div>
+                <button className={filterStyles.searchButton} onClick={fetchAuditTrail}>Filter</button>
             </div>
 
             <div className="table-responsive">
-                <table className="table table-bordered table-striped">
-                    <thead className="table-light">
+                <table className={styles.table}>
+                    <thead>
                     {table.getHeaderGroups().map(headerGroup => (
                         <tr key={headerGroup.id}>
                             {headerGroup.headers.map(header => (

@@ -12,10 +12,12 @@ import {
     unbindGuardian,
     bindGuardian,
     listGuardians,
-    getUserLogsAdmin
+    getUserTransactions,
+    makeUserPremium,
+    removeUserPremium
 } from "../services/apiService";
 import { shortenId } from "../utils/stringUtils";
-import UserLogsModal from '../components/UserLogsModal';
+import UserTransactionsModal from "../components/UserTransactionsModal";
 
 export default function UserManagement() {
     const [allUsers, setAllUsers] = useState([]);
@@ -39,9 +41,10 @@ export default function UserManagement() {
     const [selectedGuardian, setSelectedGuardian] = useState('');
     const [showViewGuardiansModal, setShowViewGuardiansModal] = useState(false);
     const [viewingUser, setViewingUser] = useState(null);
-    const [showUserLogsModal, setShowUserLogsModal] = useState(false);
-    const [viewingUserLogs, setViewingUserLogs] = useState(null);
-    const [userLogs, setUserLogs] = useState([]);
+
+    const [showUserTransactionsModal, setShowUserTransactionsModal] = useState(false);
+    const [viewingUserTransactions, setViewingUserTransactions] = useState(null);
+    const [userTransactions, setUserTransactions] = useState([]);
 
     const router = useRouter();
 
@@ -49,24 +52,6 @@ export default function UserManagement() {
         fetchUsers();
     }, [searchTerm]);
 
-    useEffect(() => {
-        if (viewingUserLogs) {
-            const fetchLogs = async () => {
-                try {
-                    const logs = await getUserLogsAdmin(viewingUserLogs.user_id);
-                    const formattedLogs = logs.map(log => ({
-                        ...log,
-                        timestamp: log.changedAt
-                    }));
-                    setUserLogs(formattedLogs);
-                } catch (error) {
-                    console.error("Failed to fetch user logs", error);
-                    setUserLogs([]);
-                }
-            };
-            fetchLogs();
-        }
-    }, [viewingUserLogs]);
 
     const [filteredUsers, setFilteredUsers] = useState([]);
 
@@ -152,6 +137,18 @@ export default function UserManagement() {
         }
     }
 
+    async function handleViewTransactions(user) {
+        setViewingUserTransactions(user);
+        try {
+            const data = await getUserTransactions(user.user_id);
+            setUserTransactions(data);
+            setShowUserTransactionsModal(true);
+        } catch (err) {
+            console.error("Failed to fetch transactions for user:", err);
+            alert("Could not load transaction data.");
+        }
+    }
+
     function handleEdit(user) {
         setEditUserData({
             user_id: user.user_id,
@@ -193,10 +190,6 @@ export default function UserManagement() {
         }
     }
 
-    const handleViewLogs = (user) => {
-        setViewingUserLogs(user);
-        setShowUserLogsModal(true);
-    };
 
     const handleManageGuardians = async (user) => {
         setSelectedUser(user);
@@ -244,6 +237,26 @@ export default function UserManagement() {
         setShowViewGuardiansModal(true);
     };
 
+    async function handleTogglePremium(user) {
+        if (!confirm(`Are you sure you want to ${user.subscriptionType === 'Premium' ? 'revoke' : 'grant'} premium status for ${user.email}?`)) {
+            return;
+        }
+
+        try {
+            if (user.subscriptionType === 'Premium') {
+                await removeUserPremium(user.user_id);
+            } else {
+                await makeUserPremium(user.user_id);
+            }
+            // Refresh the user list to show the updated status
+            await fetchUsers();
+        } catch (error) {
+            console.error('Failed to toggle premium status:', error);
+            alert(`Failed to update premium status: ${error.message}`);
+        }
+    }
+
+
     return (
         <>
             <Navbar />
@@ -287,6 +300,7 @@ export default function UserManagement() {
                             <th>ID</th>
                             <th>Email</th>
                             <th>Scan Count</th>
+                            <th>Premium Expiration</th>
                             <th>Actions</th>
                             <th>Guardian Management</th>
                         </tr>
@@ -298,9 +312,18 @@ export default function UserManagement() {
                                     <td>{shortenId(u.user_id)}</td>
                                     <td>{u.email}</td>
                                     <td>{u.scanCount !== undefined ? u.scanCount : "-"}</td>
+                                    <td>
+                                        {u.subscriptionType === 'Premium' && u.premium_expiration
+                                            ? new Date(u.premium_expiration).toLocaleDateString('en-US', {
+                                                year: 'numeric',
+                                                month: 'long',
+                                                day: 'numeric',
+                                            })
+                                            : 'N/A'}
+                                    </td>
                                     {/* Actions column */}
                                     <td>
-                                        <div className="d-flex justify-content-center gap-1">
+                                        <div className="d-flex justify-content-center gap-1 flex-wrap">
                                             <button
                                                 className="btn btn-primary btn-sm"
                                                 onClick={() => handleViewScans(u)}
@@ -308,10 +331,16 @@ export default function UserManagement() {
                                                 View Scans
                                             </button>
                                             <button
-                                                className="btn btn-secondary btn-sm"
-                                                onClick={() => handleViewLogs(u)}
+                                                className="btn btn-info btn-sm"
+                                                onClick={() => handleViewTransactions(u)}
                                             >
-                                                View Logs
+                                                View Transactions
+                                            </button>
+                                            <button
+                                                className={`btn btn-sm ${u.subscriptionType === 'Premium' ? 'btn-danger' : 'btn-success'}`}
+                                                onClick={() => handleTogglePremium(u)}
+                                            >
+                                                {u.subscriptionType === 'Premium' ? 'Revoke Premium' : 'Make Premium'}
                                             </button>
                                             <button
                                                 className="btn btn-warning btn-sm"
@@ -349,14 +378,14 @@ export default function UserManagement() {
                                         )}
                                     </td>
                                 </tr>
-                            </React.Fragment>
-                        ))}
-                        {filteredUsers.length === 0 && (
-                            <tr>
-                                <td colSpan={5} className="text-center">No users found.</td>
-                            </tr>
-                        )}
-                        </tbody>
+                           </React.Fragment>
+                       ))}
+                       {filteredUsers.length === 0 && (
+                           <tr>
+                               <td colSpan={6} className="text-center">No users found.</td>
+                           </tr>
+                       )}
+                       </tbody>
                     </table>
                 </div>
             </div>
@@ -447,10 +476,15 @@ export default function UserManagement() {
                 user={viewingUser}
             />
 
-            <UserLogsModal
-                isOpen={showUserLogsModal}
-                onRequestClose={() => setShowUserLogsModal(false)}
-                logs={userLogs}
+            <UserTransactionsModal
+                isOpen={showUserTransactionsModal}
+                onClose={() => {
+                    setShowUserTransactionsModal(false);
+                    setViewingUserTransactions(null);
+                    setUserTransactions([]);
+                }}
+                transactions={userTransactions}
+                user={viewingUserTransactions}
             />
         </>
     );
