@@ -85,7 +85,7 @@ export default function AuditTrailTable() {
         },
         {
             accessorKey: 'user_agent',
-            header: 'User Agent'
+            header: 'User Agent & Device Info'
         }
         // {
         //     accessorKey: 'request_body',
