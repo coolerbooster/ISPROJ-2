@@ -6,6 +6,8 @@ import { getUserProfile } from '../services/apiService';
 export default function Navbar() {
     const router = useRouter();
     const [username, setUsername] = useState('');
+    const currentRoute = router.pathname;
+    const publicRoutes = ['/Forgot-Password', '/Reset-Password', '/'];
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -17,8 +19,10 @@ export default function Navbar() {
             }
         };
 
-        fetchProfile();
-    }, []);
+        if (!publicRoutes.includes(currentRoute)) {
+            fetchProfile();
+        }
+    }, [currentRoute]);
 
     const handleLogout = () => {
         AuthController.logout();
