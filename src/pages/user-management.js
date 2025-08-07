@@ -1,5 +1,5 @@
 // user-management.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import $ from "jquery";
 import Navbar from "../components/Navbar";
 import { useRouter } from "next/router";
@@ -44,8 +44,8 @@ export default function UserManagement() {
 
     const [showUserTransactionsModal, setShowUserTransactionsModal] = useState(false);
     const [viewingUserTransactions, setViewingUserTransactions] = useState(null);
-    const [userTransactions, setUserTransactions] = useState([]);
 
+    const transactionsModalRef = useRef(null);
     const router = useRouter();
 
     useEffect(() => {
@@ -137,16 +137,14 @@ export default function UserManagement() {
         }
     }
 
-    async function handleViewTransactions(user) {
+    function handleViewTransactions(user) {
         setViewingUserTransactions(user);
-        try {
-            const data = await getUserTransactions(user.user_id);
-            setUserTransactions(data);
-            setShowUserTransactionsModal(true);
-        } catch (err) {
-            console.error("Failed to fetch transactions for user:", err);
-            alert("Could not load transaction data.");
-        }
+        setShowUserTransactionsModal(true);
+        setTimeout(() => {
+            if (transactionsModalRef.current) {
+                transactionsModalRef.current.fetchTransactions(user.user_id);
+            }
+        }, 0);
     }
 
     function handleEdit(user) {
@@ -477,14 +475,13 @@ export default function UserManagement() {
             />
 
             <UserTransactionsModal
+                ref={transactionsModalRef}
                 isOpen={showUserTransactionsModal}
                 onClose={() => {
                     setShowUserTransactionsModal(false);
                     setViewingUserTransactions(null);
-                    setUserTransactions([]);
                 }}
-                transactions={userTransactions}
-                user={viewingUserTransactions}
+                userId={viewingUserTransactions ? viewingUserTransactions.user_id : null}
             />
         </>
     );
