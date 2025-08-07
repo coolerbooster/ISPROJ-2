@@ -11,11 +11,11 @@ import {
 import { DateRange } from 'react-date-range';
 import 'react-date-range/dist/styles.css'; // main style file
 import 'react-date-range/dist/theme/default.css'; // theme css file
-import { addDays, format } from 'date-fns';
+import { addDays, addMinutes, format } from 'date-fns';
 import { shortenId } from '../utils/stringUtils';
 import styles from '../styles/AuditTrailTable.module.css';
 import filterStyles from '../styles/AuditTrailFilters.module.css';
-import { FaCheckCircle, FaExclamationCircle, FaChevronDown, FaFilter, FaSearch, FaRedo } from 'react-icons/fa';
+import { FaCheckCircle, FaExclamationCircle, FaChevronDown, FaFilter, FaSearch, FaRedo, FaCalendarAlt } from 'react-icons/fa';
 
 function AuditTrailTable() {
     const [logs, setLogs] = useState([]);
@@ -29,7 +29,6 @@ function AuditTrailTable() {
         action: 'All',
         ipAddress: 'All',
         status: 'All',
-        user: '',
         dateRange: [{
             startDate: addDays(new Date(), -7),
             endDate: new Date(),
@@ -37,81 +36,90 @@ function AuditTrailTable() {
         }]
     });
     const [showFilters, setShowFilters] = useState(true);
-    const [showDateRangePicker, setShowDateRangePicker] = useState(false);
-    const dateRangeRef = useRef(null);
+
+    // popup state (added)
+    const [showDatePopup, setShowDatePopup] = useState(false);
+    const datePopupRef = useRef(null);
+
+    // avoid spinner flicker during fast polling (added)
+    const initialLoadDoneRef = useRef(false);
 
     const fetchAuditTrail = useCallback(async () => {
-        setIsLoading(true);
+        const { startDate, endDate } = filters.dateRange[0] || {};
+        if (!startDate || !endDate) return;
+
+        if (!initialLoadDoneRef.current) setIsLoading(true);
         setError(null);
+
         try {
-            const { startDate, endDate } = filters.dateRange[0];
-            const data = await getAuditTrail(startDate.toISOString(), addDays(endDate, 1).toISOString());
-            setLogs(Array.isArray(data) ? data.sort((a, b) => new Date(b.changedAt) - new Date(a.changedAt)) : []);
+            const now = new Date();
+            let adjustedEndDate = endDate;
+
+            // If selected end date is today, extend by +5 minutes from now
+            if (endDate.toDateString() === now.toDateString()) {
+                adjustedEndDate = addMinutes(now, 5);
+            }
+
+            const data = await getAuditTrail(
+                startDate.toISOString(),
+                adjustedEndDate.toISOString()
+            );
+
+            setLogs(prevLogs => {
+                const prevIds = new Set(prevLogs.map(l => l.audit_id));
+                const incoming = Array.isArray(data) ? data : [];
+                const newOnes = incoming.filter(l => !prevIds.has(l.audit_id));
+
+                if (newOnes.length > 0) {
+                    newOnes.sort((a, b) => new Date(b.changedAt) - new Date(a.changedAt));
+                    const combined = [...newOnes, ...prevLogs].sort((a, b) => new Date(b.changedAt) - new Date(a.changedAt));
+
+                    const newIds = new Set(newOnes.map(l => l.audit_id));
+                    setNewRowIds(newIds);
+                    setTimeout(() => {
+                        setNewRowIds(prev => {
+                            const next = new Set(prev);
+                            newIds.forEach(id => next.delete(id));
+                            return next;
+                        });
+                    }, 500);
+
+                    return combined;
+                }
+
+                // First load or no new items
+                return prevLogs.length ? prevLogs : incoming.sort((a, b) => new Date(b.changedAt) - new Date(a.changedAt));
+            });
         } catch (err) {
             console.error('Failed to fetch audit trail:', err);
             setError('Could not load logs. Please try again later.');
         } finally {
-            setIsLoading(false);
+            if (!initialLoadDoneRef.current) {
+                setIsLoading(false);
+                initialLoadDoneRef.current = true;
+            }
         }
     }, [filters.dateRange]);
 
+    // Live polling every 500ms using the selected date range
     useEffect(() => {
-        fetchAuditTrail();
-    }, [fetchAuditTrail]);
+        if (!filters.dateRange[0]?.startDate || !filters.dateRange[0]?.endDate) return;
 
-    useEffect(() => {
-        const fetchLatest = async () => {
-            try {
-                // Fetch all recent logs without date constraints to check for new ones
-                const data = await getAuditTrail(); 
-                if (Array.isArray(data)) {
-                    setLogs(prevLogs => {
-                        const existingLogIds = new Set(prevLogs.map(log => log.audit_id));
-                        const newLogs = data.filter(log => !existingLogIds.has(log.audit_id));
-
-                        if (newLogs.length > 0) {
-                            console.log(`[AuditTrailTable] Adding ${newLogs.length} new log(s).`);
-
-                            // Sort only the new logs before prepending
-                            newLogs.sort((a, b) => new Date(b.changedAt) - new Date(a.changedAt));
-                            
-                            const newIds = new Set(newLogs.map(log => log.audit_id));
-                            setNewRowIds(newIds);
-
-                            setTimeout(() => {
-                                setNewRowIds(prev => {
-                                    const next = new Set(prev);
-                                    newIds.forEach(id => next.delete(id));
-                                    return next;
-                                });
-                            }, 500);
-
-                            // Prepend new logs to avoid re-sorting the entire list
-                            return [...newLogs, ...prevLogs];
-                        }
-                        return prevLogs;
-                    });
-                }
-            } catch (error) {
-                console.error("Error polling for audit data:", error);
-            }
-        };
-
-        const interval = setInterval(fetchLatest, 500); // Poll every 5 seconds
+        fetchAuditTrail(); // initial
+        const interval = setInterval(fetchAuditTrail, 500);
         return () => clearInterval(interval);
-    }, []);
+    }, [fetchAuditTrail, filters.dateRange]);
 
+    // Close popup on outside click
     useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (dateRangeRef.current && !dateRangeRef.current.contains(event.target)) {
-                setShowDateRangePicker(false);
+        const onClickOutside = (e) => {
+            if (showDatePopup && datePopupRef.current && !datePopupRef.current.contains(e.target)) {
+                setShowDatePopup(false);
             }
         };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
-    }, [dateRangeRef]);
+        document.addEventListener('mousedown', onClickOutside);
+        return () => document.removeEventListener('mousedown', onClickOutside);
+    }, [showDatePopup]);
 
     const columns = useMemo(() => [
         {
@@ -129,16 +137,13 @@ function AuditTrailTable() {
             header: 'User',
             cell: info => info.getValue()
         },
-        {
-            accessorKey: 'action',
-            header: 'Action'
-        },
+        { accessorKey: 'action', header: 'Action' },
         {
             accessorKey: 'status',
             header: 'Status',
             cell: ({ getValue }) => {
                 const status = getValue();
-                const isSuccess = status.toLowerCase() === 'success';
+                const isSuccess = typeof status === 'string' && status.toLowerCase() === 'success';
                 const statusClass = isSuccess ? styles.statusSuccess : styles.statusFail;
                 const Icon = isSuccess ? FaCheckCircle : FaExclamationCircle;
                 return (
@@ -149,14 +154,8 @@ function AuditTrailTable() {
                 );
             }
         },
-        {
-            accessorKey: 'ip_address',
-            header: 'IP Address'
-        },
-        {
-            accessorKey: 'user_agent',
-            header: 'User Agent & Device Info'
-        }
+        { accessorKey: 'ip_address', header: 'IP Address' },
+        { accessorKey: 'user_agent', header: 'User Agent & Device Info' }
     ], []);
 
     const extractDeviceInfo = (userAgent) => {
@@ -184,9 +183,15 @@ function AuditTrailTable() {
     const filteredLogs = useMemo(() => {
         return logs.filter(log => {
             const { deviceModel, deviceType } = extractDeviceInfo(log.user_agent);
-            const userFilter = filters.user ? log.changed_by === filters.user : true;
-            return userFilter && Object.keys(filters).every(key => {
-                if (key === 'dateRange' || key === 'user' || filters[key] === 'All') return true;
+            const { startDate, endDate } = filters.dateRange[0];
+            const logDate = new Date(log.changedAt);
+
+            // Keep your original inclusive day logic for the table filter
+            const isDateInRange = logDate >= startDate && logDate <= addDays(endDate, 1);
+            if (!isDateInRange) return false;
+
+            return Object.keys(filters).every(key => {
+                if (key === 'dateRange' || filters[key] === 'All') return true;
                 if (key === 'deviceType') return deviceType === filters.deviceType;
                 if (key === 'deviceModel') return deviceModel === filters.deviceModel;
                 return String(log[key]) === String(filters[key]);
@@ -197,19 +202,13 @@ function AuditTrailTable() {
     const table = useReactTable({
         data: filteredLogs,
         columns,
-        state: {
-            sorting,
-        },
+        state: { sorting },
         onSortingChange: setSorting,
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
-        initialState: {
-            pagination: {
-                pageSize: 10,
-            },
-        },
+        initialState: { pagination: { pageSize: 10 } },
     });
 
     const handleFilterChange = (e) => {
@@ -217,16 +216,14 @@ function AuditTrailTable() {
         setFilters(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleUserFilterChange = (e) => {
-        setFilters(prev => ({ ...prev, user: e.target.value }));
-    };
-
     const handleDateChange = (item) => {
         setFilters(prev => ({ ...prev, dateRange: [item.selection] }));
     };
 
     const applyFilters = () => {
-        fetchAuditTrail(); // Re-fetch logs based on new date range
+        initialLoadDoneRef.current = false;
+        fetchAuditTrail();
+        setShowDatePopup(false);
     };
 
     const clearFilters = () => {
@@ -236,7 +233,6 @@ function AuditTrailTable() {
             action: 'All',
             ipAddress: 'All',
             status: 'All',
-            user: '',
             dateRange: [{
                 startDate: addDays(new Date(), -7),
                 endDate: new Date(),
@@ -244,6 +240,7 @@ function AuditTrailTable() {
             }]
         };
         setFilters(cleared);
+        initialLoadDoneRef.current = false;
     };
 
     const renderFilterDropdown = (name, label) => (
@@ -260,7 +257,87 @@ function AuditTrailTable() {
             </select>
         </div>
     );
-    
+
+    // Small helper to open the popup when clicking the inputs
+    const DateInputs = () => {
+        const { startDate, endDate } = filters.dateRange[0];
+        return (
+            <div
+                style={{ position: 'relative', display: 'inline-block' }}
+                ref={datePopupRef}
+            >
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <input
+                        readOnly
+                        value={format(startDate, 'MM/dd/yyyy')}
+                        onClick={() => setShowDatePopup(true)}
+                        className="form-control"
+                        style={{ width: 140, cursor: 'pointer' }}
+                    />
+                    <span>–</span>
+                    <input
+                        readOnly
+                        value={format(endDate, 'MM/dd/yyyy')}
+                        onClick={() => setShowDatePopup(true)}
+                        className="form-control"
+                        style={{ width: 140, cursor: 'pointer' }}
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setShowDatePopup(v => !v)}
+                        className={`${filterStyles.actionButton} ${filterStyles.secondaryButton}`}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                    >
+                        <FaCalendarAlt /> Pick
+                    </button>
+                </div>
+
+                {showDatePopup && (
+                    <div
+                        style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: 0,
+                            zIndex: 1000,
+                            marginTop: 8,
+                            boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                            borderRadius: 8,
+                            overflow: 'hidden',
+                            background: '#fff'
+                        }}
+                    >
+                        <DateRange
+                            editableDateInputs={true}
+                            onChange={handleDateChange}
+                            moveRangeOnFirstSelection={false}
+                            ranges={filters.dateRange}
+                            months={1}                // single calendar
+                            direction="horizontal"
+                            showDateDisplay={true}
+                            dateDisplayFormat="MM/dd/yyyy"
+                        />
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: 8 }}>
+                            <button
+                                type="button"
+                                onClick={() => setShowDatePopup(false)}
+                                className={`${filterStyles.actionButton} ${filterStyles.secondaryButton}`}
+                            >
+                                Close
+                            </button>
+                            <button
+                                type="button"
+                                onClick={applyFilters}
+                                className={`${filterStyles.actionButton} ${filterStyles.primaryButton}`}
+                            >
+                                Apply
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     return (
         <div className="container-fluid py-4">
             <div className="d-flex align-items-center mb-2">
@@ -270,7 +347,7 @@ function AuditTrailTable() {
             <p className="text-muted mb-3 fst-italic">This is a live feed of system activities. New logs appear automatically.</p>
 
             {error && <div className="alert alert-danger">{error}</div>}
-            
+
             <div className={filterStyles.filterContainer}>
                 <div className={filterStyles.filterHeader} onClick={() => setShowFilters(!showFilters)}>
                     <h5 className={filterStyles.filterTitle}><FaFilter className="me-2"/>Filters</h5>
@@ -279,59 +356,27 @@ function AuditTrailTable() {
                 <div className={`${filterStyles.filterControls} ${!showFilters ? filterStyles.collapsed : ''}`}>
                     <div className={filterStyles.dateRangePickerGroup}>
                         <label className={filterStyles.filterLabel}>Date Range:</label>
-                        <div className={filterStyles.datePickerInputContainer} ref={dateRangeRef}>
-                            <input
-                                type="text"
-                                className={filterStyles.input}
-                                style={{ cursor: 'pointer', backgroundColor: 'var(--white-color)' }}
-                                readOnly
-                                value={`${format(filters.dateRange[0].startDate, "MM/dd/yyyy")} - ${format(filters.dateRange[0].endDate, "MM/dd/yyyy")}`}
-                                onClick={() => setShowDateRangePicker(prev => !prev)}
-                            />
-                            {showDateRangePicker && (
-                                <div className={filterStyles.datePickerPopup}>
-                                    <DateRange
-                                        editableDateInputs={true}
-                                        onChange={handleDateChange}
-                                        moveRangeOnFirstSelection={false}
-                                        ranges={filters.dateRange}
-                                        months={1}
-                                        direction="horizontal"
-                                        showDateDisplay={false}
-                                    />
-                                </div>
-                            )}
+
+                        {/* Inputs + anchored popup */}
+                        <DateInputs />
+                    </div>
+                    <div className={filterStyles.dropdownFilterGroup}>
+                        <div className={filterStyles.dropdownsWrapper}>
+                            {renderFilterDropdown('deviceType', 'Device Type')}
+                            {renderFilterDropdown('deviceModel', 'Device Model')}
+                            {renderFilterDropdown('action', 'Action')}
+                            {renderFilterDropdown('ipAddress', 'IP Address')}
+                            {renderFilterDropdown('status', 'Status')}
                         </div>
-                    </div>
-                    <div className={filterStyles.filterGroup}>
-                        <label htmlFor="userFilter" className={filterStyles.filterLabel}>Filter by User:</label>
-                        <input
-                            type="text"
-                            id="userFilter"
-                            name="user"
-                            className={filterStyles.input}
-                            value={filters.user}
-                            onChange={handleUserFilterChange}
-                            placeholder="Enter user name..."
-                        />
-                    </div>
-                   <div className={filterStyles.dropdownFilterGroup}>
-                       <div className={filterStyles.dropdownsWrapper}>
-                           {renderFilterDropdown('deviceType', 'Device Type')}
-                           {renderFilterDropdown('deviceModel', 'Device Model')}
-                           {renderFilterDropdown('action', 'Action')}
-                           {renderFilterDropdown('ipAddress', 'IP Address')}
-                           {renderFilterDropdown('status', 'Status')}
-                       </div>
-                       <div className={filterStyles.filterActions}>
-                           <button onClick={clearFilters} className={`${filterStyles.actionButton} ${filterStyles.secondaryButton}`}>
-                               <FaRedo className="me-1" /> Reset
-                           </button>
+                        <div className={filterStyles.filterActions}>
+                            <button onClick={clearFilters} className={`${filterStyles.actionButton} ${filterStyles.secondaryButton}`}>
+                                <FaRedo className="me-1" /> Reset
+                            </button>
                             <button onClick={applyFilters} className={`${filterStyles.actionButton} ${filterStyles.primaryButton}`}>
                                 <FaSearch className="me-1" /> Apply
                             </button>
                         </div>
-                   </div>
+                    </div>
                 </div>
             </div>
 
@@ -375,7 +420,7 @@ function AuditTrailTable() {
                     </tbody>
                 </table>
             </div>
-            
+
             <div className="d-flex justify-content-between align-items-center mt-3">
                 <div>
                     Showing {table.getRowModel().rows.length} of {filteredLogs.length} entries.
@@ -398,7 +443,7 @@ function AuditTrailTable() {
                     </span>
                     <button className="btn btn-sm btn-outline-secondary" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>Next &rsaquo;</button>
                     <button className="btn btn-sm btn-outline-secondary" onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage()}>Last &raquo;</button>
-                     <select
+                    <select
                         className="form-select form-select-sm"
                         value={table.getState().pagination.pageSize}
                         onChange={e => table.setPageSize(Number(e.target.value))}

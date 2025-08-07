@@ -189,14 +189,15 @@ export function updateUser(userId, data) {
 }
 
 export function getAuditTrail(startDate, endDate, search) {
+    if (!startDate || !endDate) return Promise.resolve([]); // prevent empty call
+
     const params = new URLSearchParams();
-    if (startDate) params.append('startDate', startDate);
-    if (endDate) params.append('endDate', endDate);
+    params.append('startDate', startDate);
+    params.append('endDate', endDate);
     if (search) params.append('search', search);
+
     return request('GET', `/api/admin/audit-trail?${params.toString()}`, null, true);
 }
-
-
 
 export function getConversationHistory(conversationId) {
     return request('GET', `/api/admin/conversations/${conversationId}/history`, null, true);
