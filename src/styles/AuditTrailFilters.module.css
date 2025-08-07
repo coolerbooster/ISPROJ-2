@@ -34,7 +34,7 @@
     flex-direction: column;
     gap: var(--spacing-lg);
     max-height: 1000px; /* Ample height for content */
-    overflow: hidden;
+    overflow: visible;
     transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
 }
 
@@ -184,4 +184,21 @@
 
 .secondaryButton:hover {
     background-color: #e2e6ea;
+}
+
+.datePickerInputContainer {
+    position: relative;
+    width: 250px; /* Adjust width as needed */
+}
+
+.datePickerPopup {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 1000;
+    background: var(--white-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    box-shadow: 0 4px 12px var(--shadow-color);
+    margin-top: var(--spacing-sm);
 }

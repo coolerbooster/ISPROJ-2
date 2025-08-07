@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback, memo } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, memo, useRef } from 'react';
 import { getAuditTrail } from '../services/apiService';
 import {
     useReactTable,
@@ -28,23 +28,22 @@ function AuditTrailTable() {
         deviceModel: 'All',
         action: 'All',
         ipAddress: 'All',
-        status: 'All'
-    });
-    const [tempFilters, setTempFilters] = useState(filters);
-    const [dateRange, setDateRange] = useState([
-        {
+        status: 'All',
+        dateRange: [{
             startDate: addDays(new Date(), -7),
             endDate: new Date(),
             key: 'selection'
-        }
-    ]);
+        }]
+    });
     const [showFilters, setShowFilters] = useState(true);
+    const [showDateRangePicker, setShowDateRangePicker] = useState(false);
+    const dateRangeRef = useRef(null);
 
     const fetchAuditTrail = useCallback(async () => {
         setIsLoading(true);
         setError(null);
         try {
-            const { startDate, endDate } = dateRange[0];
+            const { startDate, endDate } = filters.dateRange[0];
             const data = await getAuditTrail(startDate.toISOString(), addDays(endDate, 1).toISOString());
             setLogs(Array.isArray(data) ? data.sort((a, b) => new Date(b.changedAt) - new Date(a.changedAt)) : []);
         } catch (err) {
@@ -53,7 +52,7 @@ function AuditTrailTable() {
         } finally {
             setIsLoading(false);
         }
-    }, [dateRange]);
+    }, [filters.dateRange]);
 
     useEffect(() => {
         fetchAuditTrail();
@@ -100,6 +99,18 @@ function AuditTrailTable() {
         const interval = setInterval(fetchLatest, 500); // Poll every 5 seconds
         return () => clearInterval(interval);
     }, []);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dateRangeRef.current && !dateRangeRef.current.contains(event.target)) {
+                setShowDateRangePicker(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [dateRangeRef]);
 
     const columns = useMemo(() => [
         {
@@ -172,20 +183,20 @@ function AuditTrailTable() {
     const filteredLogs = useMemo(() => {
         return logs.filter(log => {
             const { deviceModel, deviceType } = extractDeviceInfo(log.user_agent);
-            const { startDate, endDate } = dateRange[0];
+            const { startDate, endDate } = filters.dateRange[0];
             const logDate = new Date(log.changedAt);
             
             const isDateInRange = logDate >= startDate && logDate <= addDays(endDate, 1);
             if (!isDateInRange) return false;
 
             return Object.keys(filters).every(key => {
-                if (filters[key] === 'All') return true;
+                if (key === 'dateRange' || filters[key] === 'All') return true;
                 if (key === 'deviceType') return deviceType === filters.deviceType;
                 if (key === 'deviceModel') return deviceModel === filters.deviceModel;
-                return log[key] === filters[key];
+                return String(log[key]) === String(filters[key]);
             });
         });
-    }, [logs, filters, dateRange]);
+    }, [logs, filters]);
 
     const table = useReactTable({
         data: filteredLogs,
@@ -207,11 +218,14 @@ function AuditTrailTable() {
 
     const handleFilterChange = (e) => {
         const { name, value } = e.target;
-        setTempFilters(prev => ({ ...prev, [name]: value }));
+        setFilters(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleDateChange = (item) => {
+        setFilters(prev => ({ ...prev, dateRange: [item.selection] }));
     };
 
     const applyFilters = () => {
-        setFilters(tempFilters);
         fetchAuditTrail(); // Re-fetch logs based on new date range and apply filters
     };
 
@@ -221,18 +235,14 @@ function AuditTrailTable() {
             deviceModel: 'All',
             action: 'All',
             ipAddress: 'All',
-            status: 'All'
-        };
-        setFilters(cleared);
-        setTempFilters(cleared);
-        setDateRange([
-            {
+            status: 'All',
+            dateRange: [{
                 startDate: addDays(new Date(), -7),
                 endDate: new Date(),
                 key: 'selection'
-            }
-        ]);
-        fetchAuditTrail();
+            }]
+        };
+        setFilters(cleared);
     };
 
     const renderFilterDropdown = (name, label) => (
@@ -242,7 +252,7 @@ function AuditTrailTable() {
                 id={name}
                 name={name}
                 className={filterStyles.select}
-                value={tempFilters[name]}
+                value={filters[name]}
                 onChange={handleFilterChange}
             >
                 {filterOptions[name]?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
@@ -268,17 +278,29 @@ function AuditTrailTable() {
                 <div className={`${filterStyles.filterControls} ${!showFilters ? filterStyles.collapsed : ''}`}>
                     <div className={filterStyles.dateRangePickerGroup}>
                         <label className={filterStyles.filterLabel}>Date Range:</label>
-                        <input
-                            type="date"
-                            value={format(dateRange[0].startDate, 'yyyy-MM-dd')}
-                            onChange={(e) => setDateRange([{ ...dateRange[0], startDate: new Date(e.target.value) }])}
-                        />
-                        <span>to</span>
-                        <input
-                            type="date"
-                            value={format(dateRange[0].endDate, 'yyyy-MM-dd')}
-                            onChange={(e) => setDateRange([{ ...dateRange[0], endDate: new Date(e.target.value) }])}
-                        />
+                        <div className={filterStyles.datePickerInputContainer} ref={dateRangeRef}>
+                            <input
+                                type="text"
+                                className={filterStyles.input}
+                                style={{ cursor: 'pointer', backgroundColor: 'var(--white-color)' }}
+                                readOnly
+                                value={`${format(filters.dateRange[0].startDate, "MM/dd/yyyy")} - ${format(filters.dateRange[0].endDate, "MM/dd/yyyy")}`}
+                                onClick={() => setShowDateRangePicker(prev => !prev)}
+                            />
+                            {showDateRangePicker && (
+                                <div className={filterStyles.datePickerPopup}>
+                                    <DateRange
+                                        editableDateInputs={true}
+                                        onChange={handleDateChange}
+                                        moveRangeOnFirstSelection={false}
+                                        ranges={filters.dateRange}
+                                        months={1}
+                                        direction="horizontal"
+                                        showDateDisplay={false}
+                                    />
+                                </div>
+                            )}
+                        </div>
                     </div>
                    <div className={filterStyles.dropdownFilterGroup}>
                        <div className={filterStyles.dropdownsWrapper}>
