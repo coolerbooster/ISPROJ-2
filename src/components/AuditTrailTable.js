@@ -194,6 +194,7 @@ function AuditTrailTable() {
                 if (key === 'dateRange' || filters[key] === 'All') return true;
                 if (key === 'deviceType') return deviceType === filters.deviceType;
                 if (key === 'deviceModel') return deviceModel === filters.deviceModel;
+                if (key === 'ipAddress') return log.ip_address === filters.ipAddress;
                 return String(log[key]) === String(filters[key]);
             });
         });
@@ -311,7 +312,7 @@ function AuditTrailTable() {
                             onChange={handleDateChange}
                             moveRangeOnFirstSelection={false}
                             ranges={filters.dateRange}
-                            months={1}                // single calendar
+                            months={2}                // double calendar
                             direction="horizontal"
                             showDateDisplay={true}
                             dateDisplayFormat="MM/dd/yyyy"
