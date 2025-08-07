@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { loginWithEmail, verifyOTP, getUserProfile } from '../services/apiService';
+import { loginWithEmail, verifyOTP, getUserProfile, resendOtp } from '../services/apiService';
 
 export default function Login() {
     const [email, setEmail] = useState('');
@@ -33,10 +33,18 @@ export default function Login() {
             setError(err.message || 'Invalid or expired OTP');
         }
     };
-
-    useEffect(() => {
-        const checkToken = async () => {
-            const token = localStorage.getItem('jwt_token');
+    const handleResendOtp = async () => {
+        try {
+            await resendOtp(email);
+            alert("A new OTP has been sent to your email.");
+        } catch (error) {
+            setError(error.message || "Failed to resend OTP. Please try again.");
+        }
+    };
+ 
+     useEffect(() => {
+         const checkToken = async () => {
+             const token = localStorage.getItem('jwt_token');
             if (token) {
                 try {
                     await getUserProfile();
@@ -111,6 +119,9 @@ export default function Login() {
                         {error && <div className="alert alert-danger py-1">{error}</div>}
                         <div className="d-grid">
                             <button type="submit" className="btn btn-success">Verify OTP</button>
+                        </div>
+                        <div className="text-center mt-3">
+                            <button type="button" className="btn btn-link p-0" onClick={handleResendOtp}>Resend OTP</button>
                         </div>
                         <div className="text-center mt-3">
                             <button className="btn btn-link p-0" onClick={() => setStep('login')}>Back to login</button>

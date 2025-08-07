@@ -53,14 +53,16 @@ export async function loginWithEmail(email, password) {
 export function verifyOTP(email, codeValue) {
     return request('POST', '/api/auth/verify-login', { email, codeValue });
 }
+export function resendOtp(email) {
+    return request('POST', '/api/auth/resend-otp', { email });
+}
+
 export function forgotPassword(email) {
     return request('POST', '/api/auth/forgot-password', { email });
 }
+
 export function resetPassword(email, codeValue, newPassword) {
     return request('POST', '/api/auth/reset-password', { email, codeValue, newPassword });
-}
-export function resendOtp(email) {
-    return request('POST', '/api/auth/resend-otp', { email });
 }
 
 // User
