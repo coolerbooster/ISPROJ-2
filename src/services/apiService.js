@@ -1,5 +1,5 @@
-// const BASE_URL = 'https://isproj2.ingen.com.ph';
-const BASE_URL = 'http://localhost:3001';
+const BASE_URL = 'https://isproj2.ingen.com.ph';
+// const BASE_URL = 'http://localhost:3001';
 const LS_KEY = 'jwt_token';
 
 function getToken() {
