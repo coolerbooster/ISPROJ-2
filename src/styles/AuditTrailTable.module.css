@@ -52,3 +52,16 @@
 .statusFail {
     background-color: #dc3545;
 }
+
+@keyframes fadeInAndOut {
+    0% {
+        background-color: rgba(var(--bs-primary-rgb), 0.7);
+    }
+    100% {
+        background-color: transparent;
+    }
+}
+
+.newRow {
+    animation: fadeInAndOut 2s ease-in-out;
+}

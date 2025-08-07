@@ -17,10 +17,15 @@ import filterStyles from '../styles/AuditTrailFilters.module.css';
 export default function AuditTrailTable() {
     const [logs, setLogs] = useState([]);
     const [error, setError] = useState(null);
+    const [newRowIds, setNewRowIds] = useState(new Set());
     const [sorting, setSorting] = useState([]);
-    const [globalFilter, setGlobalFilter] = useState('');
     const [startDate, setStartDate] = useState(new Date(new Date().setDate(new Date().getDate() - 7)));
     const [endDate, setEndDate] = useState(new Date());
+    const [deviceTypeFilter, setDeviceTypeFilter] = useState('All');
+    const [deviceModelFilter, setDeviceModelFilter] = useState('All');
+    const [actionFilter, setActionFilter] = useState('All');
+    const [ipAddressFilter, setIpAddressFilter] = useState('All');
+    const [statusFilter, setStatusFilter] = useState('All');
 
     const fetchAuditTrail = async () => {
         if (!startDate || !endDate) {
@@ -31,7 +36,7 @@ export default function AuditTrailTable() {
             setError(null);
             const adjustedEndDate = new Date(endDate);
             adjustedEndDate.setDate(adjustedEndDate.getDate() + 1);
-            const data = await getAuditTrail(startDate.toISOString(), adjustedEndDate.toISOString(), globalFilter);
+            const data = await getAuditTrail(startDate.toISOString(), adjustedEndDate.toISOString());
             setLogs(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error('Failed to fetch audit trail:', err);
@@ -41,6 +46,43 @@ export default function AuditTrailTable() {
 
     useEffect(() => {
         fetchAuditTrail();
+
+        const fetchLatest = async () => {
+            try {
+                const data = await getAuditTrail(undefined, undefined);
+                if (Array.isArray(data)) {
+                    setLogs(prevLogs => {
+                        const existingLogIds = new Set(prevLogs.map(log => log.audit_id));
+                        const newLogs = data.filter(log => !existingLogIds.has(log.audit_id));
+
+                        if (newLogs.length > 0) {
+                            const newIds = new Set(newLogs.map(log => log.audit_id));
+                            setNewRowIds(newIds);
+
+                            // Remove the highlight after 2 seconds
+                            setTimeout(() => {
+                                setNewRowIds(prev => {
+                                    const next = new Set(prev);
+                                    newIds.forEach(id => next.delete(id));
+                                    return next;
+                                });
+                            }, 2000);
+
+                            const updatedLogs = [...newLogs, ...prevLogs];
+                            updatedLogs.sort((a, b) => new Date(b.changedAt) - new Date(a.changedAt));
+                            return updatedLogs;
+                        }
+
+                        return prevLogs;
+                    });
+                }
+            } catch (error) {
+                console.error("Error polling for audit data:", error);
+            }
+        };
+
+        const interval = setInterval(fetchLatest, 1000);
+        return () => clearInterval(interval);
     }, []);
 
     const columns = useMemo(() => [
@@ -93,15 +135,58 @@ export default function AuditTrailTable() {
         // }
     ], []);
 
+    const extractDeviceInfo = (userAgent) => {
+        const match = userAgent.match(/Device Model: (.*?),\s*Device Type: (.*?)\)/);
+        if (match) {
+            return { deviceModel: match[1], deviceType: match[2] };
+        }
+        return { deviceModel: 'Unknown', deviceType: 'Unknown' };
+    };
+
+    const deviceTypes = useMemo(() => {
+        const types = new Set(logs.map(log => extractDeviceInfo(log.user_agent).deviceType));
+        return ['All', ...Array.from(types)];
+    }, [logs]);
+
+    const deviceModels = useMemo(() => {
+        const models = new Set(logs.map(log => extractDeviceInfo(log.user_agent).deviceModel));
+        return ['All', ...Array.from(models)];
+    }, [logs]);
+
+    const actions = useMemo(() => {
+        const actionSet = new Set(logs.map(log => log.action));
+        return ['All', ...Array.from(actionSet)];
+    }, [logs]);
+
+    const ipAddresses = useMemo(() => {
+        const ipSet = new Set(logs.map(log => log.ip_address));
+        return ['All', ...Array.from(ipSet)];
+    }, [logs]);
+
+    const statuses = useMemo(() => {
+        const statusSet = new Set(logs.map(log => log.status));
+        return ['All', ...Array.from(statusSet)];
+    }, [logs]);
+
+    const filteredLogs = useMemo(() => {
+        return logs.filter(log => {
+            const { deviceModel, deviceType } = extractDeviceInfo(log.user_agent);
+            const typeMatch = deviceTypeFilter === 'All' || deviceType === deviceTypeFilter;
+            const modelMatch = deviceModelFilter === 'All' || deviceModel === deviceModelFilter;
+            const actionMatch = actionFilter === 'All' || log.action === actionFilter;
+            const ipMatch = ipAddressFilter === 'All' || log.ip_address === ipAddressFilter;
+            const statusMatch = statusFilter === 'All' || log.status === statusFilter;
+            return typeMatch && modelMatch && actionMatch && ipMatch && statusMatch;
+        });
+    }, [logs, deviceTypeFilter, deviceModelFilter, actionFilter, ipAddressFilter, statusFilter]);
+
     const table = useReactTable({
-        data: logs,
+        data: filteredLogs,
         columns,
         state: {
             sorting,
-            globalFilter,
         },
         onSortingChange: setSorting,
-        onGlobalFilterChange: setGlobalFilter,
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
@@ -110,7 +195,11 @@ export default function AuditTrailTable() {
 
     return (
         <div className="container-fluid py-4">
-            <p className="text-muted mb-3">Showing {logs.length} log{logs.length !== 1 ? 's' : ''}</p>
+            <div className="d-flex align-items-center mb-2">
+                <h4 className="mb-0">Audit Trail</h4>
+                <span className="badge bg-success ms-2">Live</span>
+            </div>
+            <p className="text-muted mb-3 fst-italic">Note: This is a Live Audit. New logs will appear automatically.</p>
 
             {error && <div className="alert alert-danger">{error}</div>}
 
@@ -152,19 +241,80 @@ export default function AuditTrailTable() {
                     </select>
                     <span className={filterStyles.filterLabel}>entries</span>
                 </div>
-                <div className={filterStyles.filterGroup}>
-                    <label htmlFor="search" className={filterStyles.filterLabel}>Search:</label>
-                    <input
-                        id="search"
-                        type="text"
-                        className={filterStyles.input}
-                        value={globalFilter}
-                        onChange={e => setGlobalFilter(e.target.value)}
-                        placeholder={`${logs.length} records...`}
-                        aria-label="Search logs"
-                    />
-                </div>
                 <button className={filterStyles.searchButton} onClick={fetchAuditTrail}>Filter</button>
+            </div>
+
+            <div className={filterStyles.filterControls}>
+                <div className={filterStyles.filterGroup}>
+                    <label htmlFor="deviceType" className={filterStyles.filterLabel}>Device Type:</label>
+                    <select
+                        id="deviceType"
+                        className={filterStyles.select}
+                        value={deviceTypeFilter}
+                        onChange={e => setDeviceTypeFilter(e.target.value)}
+                        aria-label="Device Type"
+                    >
+                        {deviceTypes.map(type => (
+                            <option key={type} value={type}>{type}</option>
+                        ))}
+                    </select>
+                </div>
+                <div className={filterStyles.filterGroup}>
+                    <label htmlFor="deviceModel" className={filterStyles.filterLabel}>Device Model:</label>
+                    <select
+                        id="deviceModel"
+                        className={filterStyles.select}
+                        value={deviceModelFilter}
+                        onChange={e => setDeviceModelFilter(e.target.value)}
+                        aria-label="Device Model"
+                    >
+                        {deviceModels.map(model => (
+                            <option key={model} value={model}>{model}</option>
+                        ))}
+                    </select>
+                </div>
+                <div className={filterStyles.filterGroup}>
+                    <label htmlFor="actionFilter" className={filterStyles.filterLabel}>Action:</label>
+                    <select
+                        id="actionFilter"
+                        className={filterStyles.select}
+                        value={actionFilter}
+                        onChange={e => setActionFilter(e.target.value)}
+                        aria-label="Action"
+                    >
+                        {actions.map(action => (
+                            <option key={action} value={action}>{action}</option>
+                        ))}
+                    </select>
+                </div>
+                <div className={filterStyles.filterGroup}>
+                    <label htmlFor="ipAddressFilter" className={filterStyles.filterLabel}>IP Address:</label>
+                    <select
+                        id="ipAddressFilter"
+                        className={filterStyles.select}
+                        value={ipAddressFilter}
+                        onChange={e => setIpAddressFilter(e.target.value)}
+                        aria-label="IP Address"
+                    >
+                        {ipAddresses.map(ip => (
+                            <option key={ip} value={ip}>{ip}</option>
+                        ))}
+                    </select>
+                </div>
+                <div className={filterStyles.filterGroup}>
+                    <label htmlFor="statusFilter" className={filterStyles.filterLabel}>Status:</label>
+                    <select
+                        id="statusFilter"
+                        className={filterStyles.select}
+                        value={statusFilter}
+                        onChange={e => setStatusFilter(e.target.value)}
+                        aria-label="Status"
+                    >
+                        {statuses.map(status => (
+                            <option key={status} value={status}>{status}</option>
+                        ))}
+                    </select>
+                </div>
             </div>
 
             <div className="table-responsive">
@@ -191,7 +341,10 @@ export default function AuditTrailTable() {
                     </thead>
                     <tbody>
                     {table.getRowModel().rows.map(row => (
-                        <tr key={row.id}>
+                        <tr
+                            key={row.id}
+                            className={newRowIds.has(row.original.audit_id) ? styles.newRow : ''}
+                        >
                             {row.getVisibleCells().map(cell => (
                                 <td key={cell.id}>
                                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -199,7 +352,7 @@ export default function AuditTrailTable() {
                             ))}
                         </tr>
                     ))}
-                    {logs.length === 0 && (
+                    {filteredLogs.length === 0 && (
                         <tr>
                             <td colSpan={columns.length} className="text-center">No logs found.</td>
                         </tr>
@@ -209,7 +362,7 @@ export default function AuditTrailTable() {
 
                 <div className="d-flex justify-content-between align-items-center mt-3">
                     <div>
-                        Showing {table.getRowModel().rows.length} of {logs.length} entries
+                        Showing {table.getRowModel().rows.length} of {filteredLogs.length} entries
                     </div>
                     <div className="d-flex">
                         <button
