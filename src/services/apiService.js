@@ -1,5 +1,5 @@
-// const BASE_URL = 'https://isproj2.ingen.com.ph';
-const BASE_URL = 'http://localhost:3001';
+const BASE_URL = 'https://isproj2.ingen.com.ph';
+// const BASE_URL = 'http://localhost:3001';
 const UAParser = require('ua-parser-js');
 
 const LS_KEY = 'jwt_token';
@@ -37,18 +37,8 @@ function getDeviceInfo() {
 async function request(method, path, body = null, auth = false) {
     const opts = { method, headers: headers(auth) };
 
-    const deviceInfo = getDeviceInfo();
-
     if (body) {
-        Object.assign(body, deviceInfo);
         opts.body = JSON.stringify(body);
-    } else if (auth) {
-        // For GET requests or others without a body, pass device info in the query string
-        const [basePath, queryString] = path.split('?');
-        const params = new URLSearchParams(queryString);
-        params.append('deviceModel', deviceInfo.deviceModel);
-        params.append('deviceType', deviceInfo.deviceType);
-        path = `${basePath}?${params.toString()}`;
     }
 
     const res = await fetch(BASE_URL + path, opts);
@@ -83,7 +73,9 @@ export async function loginWithEmail(email, password) {
     return data;
 }
 export function verifyOTP(email, codeValue) {
-    return request('POST', '/api/auth/verify-login', { email, codeValue });
+    const deviceInfo = getDeviceInfo();
+    console.log(getDeviceInfo)
+    return request('POST', '/api/auth/verify-login', { email, codeValue, deviceInfo });
 }
 export function resendOtp(email) {
     return request('POST', '/api/auth/resend-otp', { email });
