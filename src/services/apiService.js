@@ -1,5 +1,7 @@
-const BASE_URL = 'https://isproj2.ingen.com.ph';
-// const BASE_URL = 'http://localhost:3001';
+// const BASE_URL = 'https://isproj2.ingen.com.ph';
+const BASE_URL = 'http://localhost:3001';
+const UAParser = require('ua-parser-js');
+
 const LS_KEY = 'jwt_token';
 
 function getToken() {
@@ -15,9 +17,39 @@ function headers(auth = false) {
     return h;
 }
 
+function getDeviceInfo() {
+    const parser = new UAParser();
+    const result = parser.getResult();
+    const browser = result.browser;
+    const os = result.os;
+    const device = result.device;
+
+    const browserName = browser.name || 'Unknown Browser';
+    const browserVersion = browser.version || 'Unknown Version';
+    const osName = os.name || 'Unknown OS';
+
+    return {
+        deviceModel: `${browserName} ${browserVersion} on ${osName}`,
+        deviceType: device.type || 'Desktop'
+    };
+}
+
 async function request(method, path, body = null, auth = false) {
     const opts = { method, headers: headers(auth) };
-    if (body !== null) opts.body = JSON.stringify(body);
+
+    const deviceInfo = getDeviceInfo();
+
+    if (body) {
+        Object.assign(body, deviceInfo);
+        opts.body = JSON.stringify(body);
+    } else if (auth) {
+        // For GET requests or others without a body, pass device info in the query string
+        const [basePath, queryString] = path.split('?');
+        const params = new URLSearchParams(queryString);
+        params.append('deviceModel', deviceInfo.deviceModel);
+        params.append('deviceType', deviceInfo.deviceType);
+        path = `${basePath}?${params.toString()}`;
+    }
 
     const res = await fetch(BASE_URL + path, opts);
 
