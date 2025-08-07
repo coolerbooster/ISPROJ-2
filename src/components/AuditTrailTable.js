@@ -29,6 +29,7 @@ function AuditTrailTable() {
         action: 'All',
         ipAddress: 'All',
         status: 'All',
+        user: '',
         dateRange: [{
             startDate: addDays(new Date(), -7),
             endDate: new Date(),
@@ -183,14 +184,9 @@ function AuditTrailTable() {
     const filteredLogs = useMemo(() => {
         return logs.filter(log => {
             const { deviceModel, deviceType } = extractDeviceInfo(log.user_agent);
-            const { startDate, endDate } = filters.dateRange[0];
-            const logDate = new Date(log.changedAt);
-            
-            const isDateInRange = logDate >= startDate && logDate <= addDays(endDate, 1);
-            if (!isDateInRange) return false;
-
-            return Object.keys(filters).every(key => {
-                if (key === 'dateRange' || filters[key] === 'All') return true;
+            const userFilter = filters.user ? log.changed_by === filters.user : true;
+            return userFilter && Object.keys(filters).every(key => {
+                if (key === 'dateRange' || key === 'user' || filters[key] === 'All') return true;
                 if (key === 'deviceType') return deviceType === filters.deviceType;
                 if (key === 'deviceModel') return deviceModel === filters.deviceModel;
                 return String(log[key]) === String(filters[key]);
@@ -221,12 +217,16 @@ function AuditTrailTable() {
         setFilters(prev => ({ ...prev, [name]: value }));
     };
 
+    const handleUserFilterChange = (e) => {
+        setFilters(prev => ({ ...prev, user: e.target.value }));
+    };
+
     const handleDateChange = (item) => {
         setFilters(prev => ({ ...prev, dateRange: [item.selection] }));
     };
 
     const applyFilters = () => {
-        fetchAuditTrail(); // Re-fetch logs based on new date range and apply filters
+        fetchAuditTrail(); // Re-fetch logs based on new date range
     };
 
     const clearFilters = () => {
@@ -236,6 +236,7 @@ function AuditTrailTable() {
             action: 'All',
             ipAddress: 'All',
             status: 'All',
+            user: '',
             dateRange: [{
                 startDate: addDays(new Date(), -7),
                 endDate: new Date(),
@@ -301,6 +302,18 @@ function AuditTrailTable() {
                                 </div>
                             )}
                         </div>
+                    </div>
+                    <div className={filterStyles.filterGroup}>
+                        <label htmlFor="userFilter" className={filterStyles.filterLabel}>Filter by User:</label>
+                        <input
+                            type="text"
+                            id="userFilter"
+                            name="user"
+                            className={filterStyles.input}
+                            value={filters.user}
+                            onChange={handleUserFilterChange}
+                            placeholder="Enter user name..."
+                        />
                     </div>
                    <div className={filterStyles.dropdownFilterGroup}>
                        <div className={filterStyles.dropdownsWrapper}>
