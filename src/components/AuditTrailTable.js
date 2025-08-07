@@ -117,7 +117,7 @@ export default function AuditTrailTable() {
             header: 'Status',
             cell: ({ getValue }) => {
                 const status = getValue();
-                const statusClass = status === 'success' ? styles.statusSuccess : styles.statusFail;
+                const statusClass = status.toLowerCase() === 'success' ? styles.statusSuccess : styles.statusFail;
                 return <span className={`${styles.status} ${statusClass}`}>{status}</span>;
             }
         },
