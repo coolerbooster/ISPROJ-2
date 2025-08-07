@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build && next start",
-    "start": "next build && next start"
+    "build": "npm install && next build && next start",
+    "start": "npm install && next build && next start"
   },
   "dependencies": {
     "@tanstack/react-table": "^8.21.3",
