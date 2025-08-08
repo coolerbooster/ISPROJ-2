@@ -1,4 +1,7 @@
-const BASE_URL = 'http://192.168.50.40:3001';
+const BASE_URL = 'https://isproj2.ingen.com.ph';
+// const BASE_URL = 'http://localhost:3001';
+const UAParser = require('ua-parser-js');
+
 const LS_KEY = 'jwt_token';
 
 function getToken() {
@@ -14,9 +17,29 @@ function headers(auth = false) {
     return h;
 }
 
+function getDeviceInfo() {
+    const parser = new UAParser();
+    const result = parser.getResult();
+    const browser = result.browser;
+    const os = result.os;
+    const device = result.device;
+
+    const browserName = browser.name || 'Unknown Browser';
+    const browserVersion = browser.version || 'Unknown Version';
+    const osName = os.name || 'Unknown OS';
+
+    return {
+        deviceModel: `${browserName} ${browserVersion} on ${osName}`,
+        deviceType: device.type || 'Desktop'
+    };
+}
+
 async function request(method, path, body = null, auth = false) {
     const opts = { method, headers: headers(auth) };
-    if (body !== null) opts.body = JSON.stringify(body);
+
+    if (body) {
+        opts.body = JSON.stringify(body);
+    }
 
     const res = await fetch(BASE_URL + path, opts);
 
@@ -50,16 +73,20 @@ export async function loginWithEmail(email, password) {
     return data;
 }
 export function verifyOTP(email, codeValue) {
-    return request('POST', '/api/auth/verify-login', { email, codeValue });
-}
-export function forgotPassword(email) {
-    return request('POST', '/api/auth/forgot-password', { email });
-}
-export function resetPassword(email, codeValue, newPassword) {
-    return request('POST', '/api/auth/reset-password', { email, codeValue, newPassword });
+    const deviceInfo = getDeviceInfo();
+    console.log(getDeviceInfo)
+    return request('POST', '/api/auth/verify-login', { email, codeValue, deviceInfo });
 }
 export function resendOtp(email) {
     return request('POST', '/api/auth/resend-otp', { email });
+}
+
+export function forgotPassword(email) {
+    return request('POST', '/api/auth/forgot-password', { email });
+}
+
+export function resetPassword(email, codeValue, newPassword) {
+    return request('POST', '/api/auth/reset-password', { email, codeValue, newPassword });
 }
 
 // User
@@ -162,14 +189,15 @@ export function updateUser(userId, data) {
 }
 
 export function getAuditTrail(startDate, endDate, search) {
+    if (!startDate || !endDate) return Promise.resolve([]); // prevent empty call
+
     const params = new URLSearchParams();
-    if (startDate) params.append('startDate', startDate);
-    if (endDate) params.append('endDate', endDate);
+    params.append('startDate', startDate);
+    params.append('endDate', endDate);
     if (search) params.append('search', search);
+
     return request('GET', `/api/admin/audit-trail?${params.toString()}`, null, true);
 }
-
-
 
 export function getConversationHistory(conversationId) {
     return request('GET', `/api/admin/conversations/${conversationId}/history`, null, true);
