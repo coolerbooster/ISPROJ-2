@@ -93,7 +93,7 @@ export default function AdminManagement() {
             setAdmins(updatedAdmins);
         } catch (err) {
             console.error(' Failed to delete admin:', err);
-            alert('Failed to delete admin.');
+            alert('Admin cannot delete their own account');
         }
     };
 

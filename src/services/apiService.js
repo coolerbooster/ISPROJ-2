@@ -1,4 +1,4 @@
-const BASE_URL = 'http://192.168.50.40:3001';
+const BASE_URL = 'https://isproj2.ingen.com.ph';
 const LS_KEY = 'jwt_token';
 
 function getToken() {

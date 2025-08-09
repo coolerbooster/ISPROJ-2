@@ -301,6 +301,7 @@ export default function UserManagement() {
                             <th>Email</th>
                             <th>Scan Count</th>
                             <th>Premium Expiration</th>
+                            <th>Premium</th>
                             <th>Actions</th>
                             <th>Guardian Management</th>
                         </tr>
@@ -312,6 +313,13 @@ export default function UserManagement() {
                                     <td>{shortenId(u.user_id)}</td>
                                     <td>{u.email}</td>
                                     <td>{u.scanCount !== undefined ? u.scanCount : "-"}</td>
+                                    <td>
+                                        {u.subscriptionType === 'Premium' ? (
+                                            <span className="text-success fw-bold">✓</span>
+                                        ) : (
+                                            <span className="text-danger fw-bold">✗</span>
+                                        )}
+                                    </td>
                                     <td>
                                         {u.subscriptionType === 'Premium' && u.premium_expiration
                                             ? new Date(u.premium_expiration).toLocaleDateString('en-US', {
