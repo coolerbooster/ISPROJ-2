@@ -1,4 +1,4 @@
-const BASE_URL = 'https://isproj2.ingen.com.ph';
+const BASE_URL = 'http://192.168.68.111:3001';
 const LS_KEY = 'jwt_token';
 
 function getToken() {
@@ -218,4 +218,8 @@ export function makeUserPremium(userId) {
 
 export function removeUserPremium(userId) {
     return request('PUT', `/api/admin/users/${userId}/remove-premium`, null, true);
+}
+
+export function updatePremiumExpirationAdmin(userId, premiumExpiration) {
+    return request('PUT', `/api/admin/users/${userId}/premium-expiration`, { premiumExpiration }, true);
 }

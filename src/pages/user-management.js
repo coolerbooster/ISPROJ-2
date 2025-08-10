@@ -14,7 +14,8 @@ import {
     listGuardians,
     getUserTransactions,
     makeUserPremium,
-    removeUserPremium
+    removeUserPremium,
+    updatePremiumExpirationAdmin
 } from "../services/apiService";
 import { shortenId } from "../utils/stringUtils";
 import UserTransactionsModal from "../components/UserTransactionsModal";
@@ -45,6 +46,9 @@ export default function UserManagement() {
     const [showUserTransactionsModal, setShowUserTransactionsModal] = useState(false);
     const [viewingUserTransactions, setViewingUserTransactions] = useState(null);
     const [userTransactions, setUserTransactions] = useState([]);
+    const [showUpdateExpirationModal, setShowUpdateExpirationModal] = useState(false);
+    const [selectedUserForExpiration, setSelectedUserForExpiration] = useState(null);
+    const [newExpirationDate, setNewExpirationDate] = useState('');
 
     const router = useRouter();
 
@@ -256,6 +260,30 @@ export default function UserManagement() {
         }
     }
 
+    const handleUpdateExpirationDate = async () => {
+        if (!selectedUserForExpiration || !newExpirationDate) {
+            alert('Please select a user and a new expiration date.');
+            return;
+        }
+
+        try {
+            await updatePremiumExpirationAdmin(selectedUserForExpiration.user_id, newExpirationDate);
+            setShowUpdateExpirationModal(false);
+            setSelectedUserForExpiration(null);
+            setNewExpirationDate('');
+            await fetchUsers();
+        } catch (error) {
+            console.error('Failed to update premium expiration date:', error);
+            alert(`Failed to update premium expiration date: ${error.message}`);
+        }
+    };
+
+    const openUpdateExpirationModal = (user) => {
+        setSelectedUserForExpiration(user);
+        setNewExpirationDate(user.premium_expiration ? new Date(user.premium_expiration).toISOString().split('T')[0] : '');
+        setShowUpdateExpirationModal(true);
+    };
+
 
     return (
         <>
@@ -314,13 +342,6 @@ export default function UserManagement() {
                                     <td>{u.email}</td>
                                     <td>{u.scanCount !== undefined ? u.scanCount : "-"}</td>
                                     <td>
-                                        {u.subscriptionType === 'Premium' ? (
-                                            <span className="text-success fw-bold">✓</span>
-                                        ) : (
-                                            <span className="text-danger fw-bold">✗</span>
-                                        )}
-                                    </td>
-                                    <td>
                                         {u.subscriptionType === 'Premium' && u.premium_expiration
                                             ? new Date(u.premium_expiration).toLocaleDateString('en-US', {
                                                 year: 'numeric',
@@ -328,6 +349,13 @@ export default function UserManagement() {
                                                 day: 'numeric',
                                             })
                                             : 'N/A'}
+                                    </td>
+                                    <td>
+                                        {u.subscriptionType === 'Premium' ? (
+                                            <span className="text-success fw-bold">✓</span>
+                                        ) : (
+                                            <span className="text-danger fw-bold">✗</span>
+                                        )}
                                     </td>
                                     {/* Actions column */}
                                     <td>
@@ -362,6 +390,14 @@ export default function UserManagement() {
                                             >
                                                 Delete
                                             </button>
+                                            {u.subscriptionType === 'Premium' && (
+                                                <button
+                                                    className="btn btn-secondary btn-sm"
+                                                    onClick={() => openUpdateExpirationModal(u)}
+                                                >
+                                                    Update Expiration
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                     {/* Guardian Management column */}
@@ -494,6 +530,35 @@ export default function UserManagement() {
                 transactions={userTransactions}
                 user={viewingUserTransactions}
             />
+
+            {showUpdateExpirationModal && (
+                <div className="modal fade show d-block" tabIndex="-1">
+                    <div className="modal-dialog">
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <h5 className="modal-title">Update Premium Expiration</h5>
+                                <button type="button" className="btn-close" onClick={() => setShowUpdateExpirationModal(false)}></button>
+                            </div>
+                            <div className="modal-body">
+                                <p>User: {selectedUserForExpiration?.email}</p>
+                                <div className="mb-3">
+                                    <label className="form-label">New Expiration Date</label>
+                                    <input
+                                        type="date"
+                                        className="form-control"
+                                        value={newExpirationDate}
+                                        onChange={(e) => setNewExpirationDate(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button className="btn btn-primary" onClick={handleUpdateExpirationDate}>Save</button>
+                                <button className="btn btn-secondary" onClick={() => setShowUpdateExpirationModal(false)}>Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 }
